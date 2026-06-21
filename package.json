@@ -1,0 +1,50 @@
+{
+  "name": "@bonniepdf/previewer",
+  "version": "0.1.0",
+  "description": "Framework-agnostic PDF preview component for BonniePDF — renders the SVG pages from @bonniepdf/core as a paginated, zoomable viewer with thumbnails. Ships as a Shadow-DOM web component, fully isolated from host-page CSS.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "sideEffects": [
+    "./dist/element.js",
+    "./dist/element.cjs",
+    "./src/element.ts"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./element": {
+      "types": "./dist/element.d.ts",
+      "import": "./dist/element.js",
+      "require": "./dist/element.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "prepack": "pnpm run build",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'fs'; rmSync('dist', { recursive: true, force: true });\""
+  },
+  "keywords": [
+    "pdf",
+    "preview",
+    "viewer",
+    "svg",
+    "web-component",
+    "custom-element",
+    "bonniepdf"
+  ],
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^6.0.3"
+  }
+}

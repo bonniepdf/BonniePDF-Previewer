@@ -42,6 +42,7 @@ export const STYLES = /* css */ `
   border-radius: var(--_radius-md);
   overflow: hidden;
   background: var(--_bg-alt);
+  container-type: inline-size;
 }
 
 .bpp-no-border {
@@ -116,6 +117,11 @@ export const STYLES = /* css */ `
   background: var(--_bg); color: var(--_text-1); font: inherit; font-size: 0.8125rem; cursor: pointer;
 }
 .bpp-zoom:hover { border-color: var(--_text-3); }
+
+@container (max-width: 640px) {
+  .bpp-btn-label { display: none; }
+  .bpp-btn-download { padding: 0 6px; }
+}
 
 /* ── Body / thumbnails / pages ───────────────────────────────────────────── */
 .bpp-body { display: flex; flex-direction: row; flex: 1; min-height: 0; overflow: hidden; }

@@ -35,6 +35,10 @@ export interface PreviewerOptions {
   title?: string;
   /** Default download filename. Defaults to `'document.pdf'`. */
   downloadFilename?: string;
+  /** Hides the outer border around the previewer. Defaults to `false`. */
+  hideBorder?: boolean;
+  /** Whether to apply custom styling to scrollbars. Defaults to `false`. */
+  styleScrollbars?: boolean;
 }
 
 /** Per-document data handed to {@link PreviewerHandle.load}. */

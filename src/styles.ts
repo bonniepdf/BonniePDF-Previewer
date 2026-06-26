@@ -44,6 +44,10 @@ export const STYLES = /* css */ `
   background: var(--_bg-alt);
 }
 
+.bpp-no-border {
+  border-color: transparent;
+}
+
 .bpp-empty {
   flex: 1;
   display: flex;
@@ -118,7 +122,6 @@ export const STYLES = /* css */ `
 .bpp-thumbs {
   width: 168px; flex-shrink: 0; overflow-y: auto;
   background: var(--_bg-soft); border-right: 1px solid var(--_divider);
-  scrollbar-color: var(--_divider) transparent;
 }
 .bpp-thumbs[hidden] { display: none; }
 .bpp-thumbs-list { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -136,7 +139,7 @@ export const STYLES = /* css */ `
 .bpp-thumb-active .bpp-thumb-canvas { border-color: var(--_brand); box-shadow: 0 0 0 1px var(--_brand); }
 .bpp-thumb-label { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .bpp-thumb-active .bpp-thumb-label { color: var(--_text-1); font-weight: 600; }
-.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-color: var(--_divider) transparent; }
+.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
 .bpp-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; min-width: min-content; }
 .bpp-page {
   flex-shrink: 0; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
@@ -160,4 +163,10 @@ export const STYLES = /* css */ `
 }
 @keyframes bpp-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bpp-spinner { animation-duration: 2s; } }
+
+/* ── Custom Scrollbars ───────────────────────────────────────────────────── */
+.bpp-styled-scrollbars .bpp-thumbs,
+.bpp-styled-scrollbars .bpp-scroll {
+  scrollbar-color: var(--_divider) transparent;
+}
 `;

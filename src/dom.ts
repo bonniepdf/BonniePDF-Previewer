@@ -23,7 +23,7 @@ export function buildShell(root: ShadowRoot | HTMLElement, opts: Required<Previe
   const showThumbs = opts.showThumbnails;
   root.innerHTML = `
 <style>${STYLES}</style>
-<div class="bpp" part="container" role="region" aria-label="${escapeAttr(opts.title)}">
+<div class="bpp${opts.hideBorder ? ' bpp-no-border' : ''}${opts.styleScrollbars ? ' bpp-styled-scrollbars' : ''}" part="container" role="region" aria-label="${escapeAttr(opts.title)}">
   <div class="bpp-toolbar" role="toolbar" aria-label="Document preview controls">
     <div class="bpp-group" role="group" aria-label="Page thumbnails">
       <button type="button" class="bpp-btn${showThumbs ? ' bpp-btn-active' : ''}" data-toggle-thumbs

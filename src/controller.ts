@@ -25,6 +25,8 @@ export function createPreviewer(
     fitMode: options.fitMode ?? 'fit-page',
     title: options.title ?? 'PDF preview',
     downloadFilename: options.downloadFilename ?? 'document.pdf',
+    hideBorder: options.hideBorder ?? false,
+    styleScrollbars: options.styleScrollbars ?? false,
   };
 
   buildShell(container, opts);

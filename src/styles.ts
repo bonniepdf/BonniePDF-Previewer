@@ -3,30 +3,30 @@
 // reset) cannot reach the SVG pages — the very class of bug that plagues
 // light-DOM embedding is structurally impossible here.
 //
-// Theming: every colour resolves a public `--bpp-*` custom property first, then
-// the BonniePDF site tokens (`--astro-c-*` / `--bp-*`) for drop-in use inside the
-// website, then a literal light-theme default. Custom properties pierce the shadow
-// boundary, so any of these set on the host document just work.
+// Theming: every colour resolves the shared BonniePDF tokens (`--bpdf-c-*` /
+// `--bp-*`) set by @bonniepdf/ui-shared on the host document, then a literal
+// light-theme default. Custom properties pierce the shadow boundary, so the
+// previewer matches the host page's theme automatically.
 
 export const STYLES = /* css */ `
 :host {
-  --_divider: var(--bpp-divider, var(--astro-c-divider, #e2e8f0));
-  --_bg: var(--bpp-bg, var(--astro-c-bg, #ffffff));
-  --_bg-alt: var(--bpp-bg-alt, var(--astro-c-bg-alt, #f1f5f9));
-  --_bg-soft: var(--bpp-bg-soft, var(--astro-c-bg-soft, #f8fafc));
-  --_brand: var(--bpp-accent, var(--astro-c-brand-2, #2563eb));
-  --_brand-soft: var(--bpp-accent-soft, var(--astro-c-brand-soft, #dbeafe));
-  --_text-1: var(--bpp-text-1, var(--bp-text-1, #0f172a));
-  --_text-2: var(--bpp-text-2, var(--bp-text-2, #475569));
-  --_text-3: var(--bpp-text-3, var(--bp-text-3, #94a3b8));
-  --_radius-md: var(--bpp-radius, 8px);
-  --_radius-sm: var(--bpp-radius-sm, 6px);
+  --_divider: var(--bpdf-c-divider, #e2e8f0);
+  --_bg: var(--bpdf-c-bg, #ffffff);
+  --_bg-alt: var(--bpdf-c-bg-alt, #f1f5f9);
+  --_bg-soft: var(--bpdf-c-bg-soft, #f8fafc);
+  --_brand: var(--bpdf-c-brand-2, #2563eb);
+  --_brand-soft: var(--bpdf-c-brand-soft, #dbeafe);
+  --_text-1: var(--bp-text-1, #0f172a);
+  --_text-2: var(--bp-text-2, #475569);
+  --_text-3: var(--bp-text-3, #94a3b8);
+  --_radius-md: var(--bp-radius, 8px);
+  --_radius-sm: 6px;
 
   display: block;
   height: 100%;
   min-height: 0;
   /* A clean default font for the chrome; the SVG pages carry their own fonts. */
-  font-family: var(--bpp-font, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
+  font-family: var(--bp-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
 }
 
 * { box-sizing: border-box; }

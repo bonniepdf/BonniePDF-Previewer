@@ -3,30 +3,30 @@
 // reset) cannot reach the SVG pages — the very class of bug that plagues
 // light-DOM embedding is structurally impossible here.
 //
-// Theming: every colour resolves the shared BonniePDF tokens (`--bpdf-c-*` /
-// `--bp-*`) set by @bonniepdf/ui-shared on the host document, then a literal
+// Theming: every colour resolves the shared BonniePDF tokens (`--bpdfdf-c-*` /
+// `--bpdf-*`) set by @bonniepdf/ui-shared on the host document, then a literal
 // light-theme default. Custom properties pierce the shadow boundary, so the
 // previewer matches the host page's theme automatically.
 
 export const STYLES = /* css */ `
 :host {
-  --_divider: var(--bpdf-c-divider, #e2e8f0);
-  --_bg: var(--bpdf-c-bg, #ffffff);
-  --_bg-alt: var(--bpdf-c-bg-alt, #f1f5f9);
-  --_bg-soft: var(--bpdf-c-bg-soft, #f8fafc);
-  --_brand: var(--bpdf-c-brand-2, #2563eb);
-  --_brand-soft: var(--bpdf-c-brand-soft, #dbeafe);
-  --_text-1: var(--bp-text-1, #0f172a);
-  --_text-2: var(--bp-text-2, #475569);
-  --_text-3: var(--bp-text-3, #94a3b8);
-  --_radius-md: var(--bp-radius, 8px);
+  --_divider: var(--bpdfdf-c-divider, #e2e8f0);
+  --_bg: var(--bpdfdf-c-bg, #ffffff);
+  --_bg-alt: var(--bpdfdf-c-bg-alt, #f1f5f9);
+  --_bg-soft: var(--bpdfdf-c-bg-soft, #f8fafc);
+  --_brand: var(--bpdfdf-c-brand-2, #2563eb);
+  --_brand-soft: var(--bpdfdf-c-brand-soft, #dbeafe);
+  --_text-1: var(--bpdf-text-1, #0f172a);
+  --_text-2: var(--bpdf-text-2, #475569);
+  --_text-3: var(--bpdf-text-3, #94a3b8);
+  --_radius-md: var(--bpdf-radius, 8px);
   --_radius-sm: 6px;
 
   display: block;
   height: 100%;
   min-height: 0;
   /* A clean default font for the chrome; the SVG pages carry their own fonts. */
-  font-family: var(--bp-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
+  font-family: var(--bpdf-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
 }
 
 * { box-sizing: border-box; }

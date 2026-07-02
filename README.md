@@ -58,13 +58,13 @@ handle.dispose();
 
 ## Theming
 
-Colours resolve `--bpp-*` custom properties (which pierce the shadow boundary), falling back to a clean light theme. For example:
+Colours resolve `--bpdf-*` custom properties (which pierce the shadow boundary), falling back to a clean light theme. For example:
 
 ```css
 bonnie-pdf-previewer {
-  --bpp-accent: #16a34a;
-  --bpp-bg-alt: #0b0f17;
-  --bpp-text-1: #e5e7eb;
+  --bpdf-accent: #16a34a;
+  --bpdf-bg-alt: #0b0f17;
+  --bpdf-text-1: #e5e7eb;
 }
 ```
 

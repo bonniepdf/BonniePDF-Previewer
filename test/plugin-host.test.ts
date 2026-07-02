@@ -106,6 +106,46 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
+  it('structure view shows each node size, with a page-span suffix for multi-page nodes', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { plugins: [structureView()] });
+    handle.load(pages(2), { snapshot: snapshotFor2Pages() });
+
+    const sizes = Array.from(host.querySelectorAll('.bpp-tree-size')).map(s => s.textContent);
+    // TextBlock: single rect 180×20. Page: 180×280 first rect, spans 2 pages.
+    expect(sizes).toContain('180×20');
+    expect(sizes).toContain('180×280 · 2p');
+    // Document has no rect → no size cell.
+    const docRow = host.querySelector('.bpp-tree-row');
+    expect(docRow?.querySelector('.bpp-tree-size')).toBeNull();
+
+    handle.dispose();
+    host.remove();
+  });
+
+  it('reverse linking: clicking the page selects the deepest node in the tree', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    handle.load(pages(2), { snapshot: snapshotFor2Pages() });
+
+    const pageEl = host.querySelectorAll('.bpp-page')[0] as HTMLElement;
+    // jsdom has no layout, so getBoundingClientRect is all-zero and scale is 1;
+    // a click at (15,15) lands inside the TextBlock rect {x:10,y:10,w:180,h:20}.
+    pageEl.dispatchEvent(new MouseEvent('click', { clientX: 15, clientY: 15, bubbles: true }));
+
+    // The TextBlock ('title') row — the deepest node under the point — is selected.
+    const selected = host.querySelector('.bpp-tree-row[aria-selected="true"]');
+    expect(selected?.querySelector('.bpp-tree-type')?.textContent).toBe('TextBlock');
+    expect(selected?.querySelector('.bpp-tree-name')?.textContent).toBe('title');
+    // And its highlight is painted.
+    expect(host.querySelectorAll('.bpp-hl').length).toBeGreaterThan(0);
+
+    handle.dispose();
+    host.remove();
+  });
+
   it('structure view shows an empty state when no snapshot is provided', () => {
     const host = document.createElement('div');
     document.body.append(host);

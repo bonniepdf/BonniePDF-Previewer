@@ -51,6 +51,9 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
   const rowsById = new Map<string, HTMLElement>();
   let highlights: ActiveHighlight[] = [];
   let selectedId: string | null = null;
+  let rootNode: SnapshotNode | null = null;
+  // Page-click listeners are torn down and re-attached per load.
+  let clickAbort: AbortController | null = null;
 
   function setVisible(next: boolean): void {
     visible = next;
@@ -86,13 +89,56 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
     el.style.height = `${rect.height * scale}px`;
   }
 
-  function select(node: SnapshotNode): void {
+  function select(node: SnapshotNode, revealRow = false): void {
     if (!ctx) return;
     selectedId = node.id;
     for (const [id, row] of rowsById) row.setAttribute('aria-selected', String(id === node.id));
     paint(node, false);
+    if (revealRow) {
+      const row = rowsById.get(node.id);
+      if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
+    }
     const first = node.rects[0];
     if (first) ctx.scrollToPage(first.page + 1);
+  }
+
+  /** Formats a node's size for the tree row: first rect's w×h in points,
+   * with a page-count suffix when the node spans multiple pages. */
+  function formatSize(node: SnapshotNode): string {
+    const r = node.rects[0];
+    if (!r) return '';
+    const round = (n: number) => Math.round(n);
+    let s = `${round(r.width)}×${round(r.height)}`;
+    if (node.rects.length > 1) s += ` · ${node.rects.length}p`;
+    return s;
+  }
+
+  /**
+   * Returns the deepest, smallest node whose rectangle on `pageIndex` contains
+   * the page-local point (x, y) in points — the most specific element under the
+   * cursor. Null when the point hits no node.
+   */
+  function hitTest(pageIndex: number, x: number, y: number): SnapshotNode | null {
+    if (!rootNode) return null;
+    let best: SnapshotNode | null = null;
+    let bestDepth = -1;
+    let bestArea = Infinity;
+    const visit = (node: SnapshotNode, depth: number): void => {
+      for (const r of node.rects) {
+        if (r.page !== pageIndex) continue;
+        if (x < r.x || x > r.x + r.width || y < r.y || y > r.y + r.height) continue;
+        const area = r.width * r.height;
+        // Prefer the deepest match; break ties by the smallest rectangle.
+        if (depth > bestDepth || (depth === bestDepth && area < bestArea)) {
+          best = node;
+          bestDepth = depth;
+          bestArea = area;
+        }
+      }
+      for (const child of node.children) visit(child, depth + 1);
+    };
+    visit(rootNode, 0);
+    return best;
   }
 
   /** Builds the <ul> tree for a node's children. */
@@ -115,6 +161,14 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
         name.className = 'bpp-tree-name';
         name.textContent = node.name;
         row.append(name);
+      }
+      const sizeText = formatSize(node);
+      if (sizeText) {
+        const size = doc.createElement('span');
+        size.className = 'bpp-tree-size';
+        size.textContent = sizeText;
+        size.title = 'width × height in points';
+        row.append(size);
       }
 
       row.addEventListener('click', () => select(node));
@@ -179,6 +233,9 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
       rowsById.clear();
       highlights = [];
       selectedId = null;
+      rootNode = null;
+      clickAbort?.abort();
+      clickAbort = null;
       if (!panelEl) return;
 
       if (!context.snapshot) {
@@ -187,14 +244,38 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
         return;
       }
 
+      rootNode = context.snapshot.root;
       const doc = context.ownerDocument;
       const tree = doc.createElement('ul');
       tree.className = 'bpp-tree';
       tree.setAttribute('role', 'tree');
       tree.setAttribute('aria-label', label);
       // Root is the Document; show its children (Pages) at the top level.
-      tree.append(buildTree(doc, [context.snapshot.root]));
+      tree.append(buildTree(doc, [rootNode]));
       panelEl.replaceChildren(tree);
+
+      // Reverse linking: click an element on the page to select it in the tree.
+      // Overlays are pointer-events:none, so clicks land on the page host.
+      clickAbort = new AbortController();
+      for (let i = 0; i < context.pageCount(); i++) {
+        const pageEl = context.pageElement(i);
+        if (!pageEl) continue;
+        const pageIndex = i;
+        pageEl.addEventListener(
+          'click',
+          event => {
+            if (!visible || !ctx) return;
+            const scale = ctx.scale();
+            if (scale <= 0) return;
+            const bounds = pageEl.getBoundingClientRect();
+            const x = (event.clientX - bounds.left) / scale;
+            const y = (event.clientY - bounds.top) / scale;
+            const node = hitTest(pageIndex, x, y);
+            if (node) select(node, /* revealRow */ true);
+          },
+          { signal: clickAbort.signal },
+        );
+      }
 
       if (openByDefault) setVisible(true);
     },
@@ -207,6 +288,9 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
       clearHighlights();
       rowsById.clear();
       selectedId = null;
+      rootNode = null;
+      clickAbort?.abort();
+      clickAbort = null;
     },
   };
 }

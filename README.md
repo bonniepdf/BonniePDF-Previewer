@@ -59,6 +59,11 @@ documented above. The first-party `structureView()` plugin renders the document'
 rectangle(s) that element occupied (one per page it spans) as a translucent
 overlay on top of the SVG. The SVG itself is never modified.
 
+Each tree row shows the element's size (width × height in points; a `· Np`
+suffix marks nodes that span multiple pages). Selection is **two-way**: click a
+row to highlight it on the page, or click an element **on the page** to select
+the deepest node under the cursor in the tree.
+
 It consumes the layout snapshot from `@bonniepdf/core`:
 
 ```js

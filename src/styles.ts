@@ -191,6 +191,10 @@ export const STYLES = /* css */ `
 }
 .bpp-tree-type { color: var(--_text-1); }
 .bpp-tree-name { color: var(--_text-3); font-style: italic; }
+.bpp-tree-size {
+  margin-left: auto; padding-left: 8px;
+  color: var(--_text-3); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 
 /* ── Loading overlay ─────────────────────────────────────────────────────── */
 .bpp-loading {

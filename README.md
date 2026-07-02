@@ -50,6 +50,49 @@ handle.dispose();
 
 `createPreviewer` accepts a `ShadowRoot` or any element. The web component is a thin wrapper that calls it with its own shadow root.
 
+## Structure view (plugin)
+
+The previewer ships a **plugin system** so optional features layer on without
+touching the core viewer — with no plugins registered, behaviour is exactly as
+documented above. The first-party `structureView()` plugin renders the document's
+**layout structure tree** in a side panel; selecting a node highlights the
+rectangle(s) that element occupied (one per page it spans) as a translucent
+overlay on top of the SVG. The SVG itself is never modified.
+
+Each tree row shows the element's size (width × height in points; a `· Np`
+suffix marks nodes that span multiple pages). Selection is **two-way**: click a
+row to highlight it on the page, or click an element **on the page** to select
+the deepest node under the cursor in the tree.
+
+It consumes the layout snapshot from `@bonniepdf/core`:
+
+```js
+import { createPreviewer, structureView, svgStringsToPages } from '@bonniepdf/previewer';
+
+// Ask core to capture the layout while rendering the SVG:
+const { pages, fontFaceCss, snapshot } =
+  await doc.generateSvgDocumentAsync({ captureLayout: true });
+
+const handle = createPreviewer(container, { plugins: [structureView()] });
+handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
+```
+
+Web-component opt-in via the boolean `structure-view` attribute:
+
+```html
+<bonnie-pdf-previewer structure-view style="height: 80vh"></bonnie-pdf-previewer>
+```
+
+```js
+el.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
+```
+
+Writing your own plugin: implement `PreviewerPlugin` (`setup` / `load` / `sync` /
+`teardown`). The host hands you `overlayFor(pageIndex)` (a `pointer-events:none`
+layer that survives the windowed page virtualisation), `addSidePanel`,
+`addToolbarItem`, `scale()`, and `scrollToPage()` — see `src/structure-view.ts`
+for a complete example.
+
 ## Performance
 
 - **Windowed virtualisation** — only the pages/thumbnails near the viewport are mounted in the DOM; the rest are kept as lightweight placeholders. A 50-page document keeps ~6 pages live at a time instead of all 50.

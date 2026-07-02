@@ -1,5 +1,13 @@
 import { buildShell, namespaceSvgIds } from './dom';
-import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewPage } from './types';
+import type {
+  LoadOptions,
+  PreviewerHandle,
+  PreviewerOptions,
+  PreviewerPlugin,
+  PreviewerPluginContext,
+  PreviewerLoadContext,
+  PreviewPage,
+} from './types';
 
 const PAGE_PAD = 24;
 const ZOOM_STEP = 1.25;
@@ -21,6 +29,7 @@ export function createPreviewer(
   options: PreviewerOptions = {},
 ): PreviewerHandle {
   const opts: Required<PreviewerOptions> = {
+    plugins: options.plugins ?? [],
     showThumbnails: options.showThumbnails ?? true,
     fitMode: options.fitMode ?? 'fit-page',
     title: options.title ?? 'PDF preview',
@@ -42,6 +51,66 @@ export function createPreviewer(
   let fontStyle: HTMLStyleElement | null = null;
   let disposed = false;
 
+  // ── Plugin host ────────────────────────────────────────────────────────────
+  // Per-load state the plugin context closes over via mutable refs, so a single
+  // context object stays valid across loads.
+  const plugins: PreviewerPlugin[] = opts.plugins;
+  const setupCleanups: Array<() => void> = [];
+  let curPageEls: HTMLElement[] = [];
+  let curOverlays: Array<HTMLElement | null> = [];
+  let curScale: () => number = () => 1;
+  let curScrollToPage: (n: number) => void = () => {};
+
+  const pluginContext: PreviewerPluginContext = {
+    ownerDocument: ownerDoc,
+    addToolbarItem(element) {
+      const slot = q<HTMLElement>('[data-toolbar-end]') ?? q<HTMLElement>('.bpp-toolbar');
+      slot?.append(element);
+    },
+    addSidePanel({ id, label, element }) {
+      const body = q<HTMLElement>('.bpp-body');
+      const aside = ownerDoc.createElement('aside');
+      aside.className = 'bpp-side';
+      aside.dataset.sidePanel = id;
+      aside.setAttribute('aria-label', label);
+      aside.hidden = true;
+      aside.append(element);
+      // Insert after the page scroll area (right-hand rail).
+      body?.append(aside);
+      return {
+        setVisible(visible: boolean) {
+          aside.hidden = !visible;
+        },
+      };
+    },
+    pageElement: index => curPageEls[index] ?? null,
+    overlayFor(index) {
+      const host = curPageEls[index];
+      if (!host) return null;
+      let overlay = curOverlays[index];
+      if (!overlay) {
+        overlay = ownerDoc.createElement('div');
+        overlay.className = 'bpp-overlay';
+        host.append(overlay);
+        curOverlays[index] = overlay;
+      }
+      return overlay;
+    },
+    scale: () => curScale(),
+    pageCount: () => curPageEls.length,
+    scrollToPage: n => curScrollToPage(n),
+  };
+
+  // Plugin setup runs once, against the chrome built above.
+  for (const plugin of plugins) {
+    try {
+      const cleanup = plugin.setup?.(pluginContext);
+      if (cleanup) setupCleanups.push(cleanup);
+    } catch (err) {
+      console.error(`[bonniepdf-previewer] plugin "${plugin.name}" setup failed`, err);
+    }
+  }
+
   function load(pages: PreviewPage[], loadOptions: LoadOptions = {}): void {
     if (disposed) return;
     // A fresh load supersedes any previous one.
@@ -49,6 +118,7 @@ export function createPreviewer(
     listeners = new AbortController();
     for (const o of observers) o.disconnect();
     observers = [];
+    teardownPlugins();
     const signal = listeners.signal;
 
     injectFonts(loadOptions.fontFaceCss);
@@ -84,19 +154,27 @@ export function createPreviewer(
       return li;
     });
 
+    // Each page is `.bpp-page > .bpp-page-canvas` (the lazily-mounted SVG host).
+    // Plugin overlays are appended to `.bpp-page` as siblings of the canvas, so
+    // they survive the windowed mount/unmount that wipes the canvas content.
+    const pageCanvases: HTMLElement[] = [];
     const pageEls = pages.map((page, index) => {
       const el = ownerDoc.createElement('div');
       el.className = 'bpp-page';
       el.dataset.pageIndex = String(index);
       el.style.width = `${page.width}px`;
       el.style.height = `${page.height}px`;
+      const canvas = ownerDoc.createElement('div');
+      canvas.className = 'bpp-page-canvas';
+      el.append(canvas);
+      pageCanvases.push(canvas);
       return el;
     });
 
     thumbsList.replaceChildren(...thumbItems);
     pagesContainer.replaceChildren(...pageEls);
 
-    observeLazyMount(pageEls, svgFor, i => `p${i}-`, scroll, PAGE_MOUNT_MARGIN);
+    observeLazyMount(pageCanvases, svgFor, i => `p${i}-`, scroll, PAGE_MOUNT_MARGIN);
     observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN);
 
     // ── Viewer state ─────────────────────────────────────────────────────────
@@ -163,6 +241,14 @@ export function createPreviewer(
         el.style.height = `${page.height * scale}px`;
       });
       syncToolbar(scale);
+      // Notify plugins so overlays can re-scale with the page.
+      for (const plugin of plugins) {
+        try {
+          plugin.sync?.({ scale, currentPage });
+        } catch (err) {
+          console.error(`[bonniepdf-previewer] plugin "${plugin.name}" sync failed`, err);
+        }
+      }
     };
 
     const setCurrentPage = (n: number): void => {
@@ -175,6 +261,7 @@ export function createPreviewer(
       const el = pageEls[target - 1];
       if (!el) return;
       setCurrentPage(target);
+      if (typeof scroll.scrollTo !== 'function') return; // jsdom / non-DOM hosts
       const delta = el.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
       scroll.scrollTo({ top: Math.max(scroll.scrollTop + delta - PAGE_PAD, 0), behavior: 'smooth' });
     };
@@ -288,7 +375,40 @@ export function createPreviewer(
     if (thumbsNav) thumbsNav.hidden = !showThumbnails;
     const loading = q<HTMLElement>('[data-loading]');
     if (loading) loading.hidden = true;
+
+    // Expose this load's state to the plugin context, then run plugin load().
+    curPageEls = pageEls;
+    curOverlays = new Array(pages.length).fill(null);
+    curScale = effectiveScale;
+    curScrollToPage = scrollToPage;
+    if (plugins.length > 0) {
+      const loadCtx: PreviewerLoadContext = {
+        ...pluginContext,
+        pages,
+        snapshot: loadOptions.snapshot,
+      };
+      for (const plugin of plugins) {
+        try {
+          plugin.load?.(loadCtx);
+        } catch (err) {
+          console.error(`[bonniepdf-previewer] plugin "${plugin.name}" load failed`, err);
+        }
+      }
+    }
+
     syncPages();
+  }
+
+  /** Tears down all plugins for the current load (idempotent). */
+  function teardownPlugins(): void {
+    for (const plugin of plugins) {
+      try {
+        plugin.teardown?.();
+      } catch (err) {
+        console.error(`[bonniepdf-previewer] plugin "${plugin.name}" teardown failed`, err);
+      }
+    }
+    curOverlays = [];
   }
 
   /** Windowed lazy mount/unmount with per-index memoisation of namespaced markup. */
@@ -361,6 +481,14 @@ export function createPreviewer(
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    teardownPlugins();
+    for (const cleanup of setupCleanups.splice(0)) {
+      try {
+        cleanup();
+      } catch {
+        /* ignore cleanup errors during dispose */
+      }
+    }
     listeners.abort();
     for (const o of observers) o.disconnect();
     observers = [];

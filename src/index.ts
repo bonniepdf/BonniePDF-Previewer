@@ -7,10 +7,19 @@
 export { createPreviewer } from './controller';
 export { BonniePdfPreviewerElement, defineBonniePdfPreviewer } from './define';
 export { svgStringsToPages } from './types';
+export { structureView } from './structure-view';
+export type { StructureViewOptions } from './structure-view';
 export type {
   PreviewPage,
   FitMode,
   PreviewerOptions,
   LoadOptions,
   PreviewerHandle,
+  PreviewerPlugin,
+  PreviewerPluginContext,
+  PreviewerLoadContext,
+  PreviewerSyncContext,
+  LayoutSnapshot,
+  SnapshotNode,
+  SnapshotRect,
 } from './types';

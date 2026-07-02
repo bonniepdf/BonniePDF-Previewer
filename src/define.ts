@@ -1,4 +1,5 @@
 import { createPreviewer } from './controller';
+import { structureView } from './structure-view';
 import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewPage } from './types';
 
 /**
@@ -51,7 +52,11 @@ export class BonniePdfPreviewerElement extends HTMLElement {
 
   private readOptions(): PreviewerOptions {
     const showThumbs = this.getAttribute('show-thumbnails');
+    // The structure view is opt-in via the `structure-view` boolean attribute,
+    // so the default element is byte-for-byte the previous component.
+    const wantsStructure = this.hasAttribute('structure-view');
     return {
+      plugins: wantsStructure ? [structureView()] : undefined,
       showThumbnails: showThumbs === null ? undefined : showThumbs !== 'false',
       fitMode: this.getAttribute('fit-mode') === 'fit-width' ? 'fit-width' : 'fit-page',
       title: this.getAttribute('label') ?? undefined,

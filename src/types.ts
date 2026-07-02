@@ -25,8 +25,102 @@ export interface PreviewPage {
 /** How the previewer fits pages into the available viewport space. */
 export type FitMode = 'fit-page' | 'fit-width' | 'custom';
 
+// ---------------------------------------------------------------------------
+// Layout snapshot (structural mirror of @bonniepdf/core's LayoutSnapshot).
+//
+// Declared here, not imported, so the previewer stays decoupled from the core
+// package — exactly as it already is for SVG page strings. Any object matching
+// this shape (e.g. the `snapshot` from `generateSvgDocumentAsync({ captureLayout:
+// true })`) drives the structure-view plugin.
+// ---------------------------------------------------------------------------
+
+/** One rectangle an element occupied on a page (top-left origin, PDF points). */
+export interface SnapshotRect {
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** One node in the layout tree. */
+export interface SnapshotNode {
+  id: string;
+  type: string;
+  name?: string;
+  rects: SnapshotRect[];
+  children: SnapshotNode[];
+}
+
+/** The captured layout of a document, as consumed by the structure view. */
+export interface LayoutSnapshot {
+  version: number;
+  pages: { width: number; height: number }[];
+  root: SnapshotNode;
+}
+
+/**
+ * Capabilities the previewer host hands to a plugin. Everything here is a thin
+ * wrapper over machinery the previewer already owns (page elements, the scale
+ * factor, scroll-to-page); plugins never reach into the controller internals.
+ */
+export interface PreviewerPluginContext {
+  /** The owning document, for creating elements. */
+  readonly ownerDocument: Document;
+  /** Adds a control to the toolbar's trailing group. */
+  addToolbarItem(element: HTMLElement): void;
+  /**
+   * Adds a collapsible side panel in the body (beside the page scroll area).
+   * Returns a handle to show/hide it.
+   */
+  addSidePanel(panel: { id: string; label: string; element: HTMLElement }): { setVisible(visible: boolean): void };
+  /** The `.bpp-page` host element for a 0-based page index, or null. */
+  pageElement(index: number): HTMLElement | null;
+  /**
+   * The pointer-events:none overlay layer for a page, created on first use.
+   * Plugins paint absolutely-positioned children into it; it survives the
+   * windowed mount/unmount of the page's SVG.
+   */
+  overlayFor(index: number): HTMLElement | null;
+  /** Current scale factor mapping PDF points to CSS pixels. */
+  scale(): number;
+  /** Number of pages currently loaded. */
+  pageCount(): number;
+  /** Scrolls a 1-based page into view (mirrors the toolbar's navigation). */
+  scrollToPage(pageNumber: number): void;
+}
+
+/** Per-load context: the plugin context plus the document being shown. */
+export interface PreviewerLoadContext extends PreviewerPluginContext {
+  pages: PreviewPage[];
+  /** The layout snapshot, when the host was given one via {@link LoadOptions.snapshot}. */
+  snapshot?: LayoutSnapshot;
+}
+
+/** State pushed to plugins whenever the viewport scale or current page changes. */
+export interface PreviewerSyncContext {
+  scale: number;
+  currentPage: number;
+}
+
+/**
+ * A previewer plugin. Lifecycle: `setup` once when the previewer is built (may
+ * return a cleanup fn), `load` on every document load, `sync` on scale/page
+ * changes, `teardown` on dispose or when a load supersedes the previous one.
+ * With no plugins registered the previewer behaves exactly as before.
+ */
+export interface PreviewerPlugin {
+  readonly name: string;
+  setup?(ctx: PreviewerPluginContext): void | (() => void);
+  load?(ctx: PreviewerLoadContext): void;
+  sync?(ctx: PreviewerSyncContext): void;
+  teardown?(): void;
+}
+
 /** Configuration applied when a previewer is created (chrome / defaults). */
 export interface PreviewerOptions {
+  /** Plugins extending the previewer (e.g. the structure view). Optional. */
+  plugins?: PreviewerPlugin[];
   /** Show the thumbnail rail on first render. Defaults to `true`. */
   showThumbnails?: boolean;
   /** Initial fit mode. Defaults to `'fit-page'`. */
@@ -61,6 +155,12 @@ export interface LoadOptions {
   pdfProvider?: () => Promise<string>;
   /** Overrides the download filename for this document. */
   downloadFilename?: string;
+  /**
+   * The layout snapshot for this document (from `generateSvgDocumentAsync({
+   * captureLayout: true })`). Consumed by the structure-view plugin; ignored
+   * when no plugin uses it.
+   */
+  snapshot?: LayoutSnapshot;
 }
 
 /** Controls a created previewer instance. Returned by `createPreviewer`. */

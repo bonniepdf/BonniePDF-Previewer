@@ -148,12 +148,49 @@ export const STYLES = /* css */ `
 .bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
 .bpp-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; min-width: min-content; }
 .bpp-page {
+  position: relative;
   flex-shrink: 0; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   /* Let the browser skip layout/paint of off-screen pages as a second layer of
      virtualisation on top of the JS mount/unmount. */
   content-visibility: auto;
 }
+.bpp-page-canvas { position: absolute; inset: 0; }
 .bpp-page svg { display: block; width: 100%; height: 100%; }
+
+/* ── Plugin overlays (structure view highlights) ──────────────────────────── */
+.bpp-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.bpp-hl {
+  position: absolute; box-sizing: border-box;
+  background: color-mix(in srgb, var(--_brand) 18%, transparent);
+  border: 1px solid var(--_brand);
+  border-radius: 1px;
+}
+.bpp-hl-hover {
+  background: color-mix(in srgb, var(--_brand) 8%, transparent);
+  border-style: dashed;
+}
+
+/* ── Plugin side panel (structure tree) ───────────────────────────────────── */
+.bpp-side {
+  width: 280px; flex-shrink: 0; overflow: auto;
+  border-left: 1px solid var(--_divider); background: var(--_bg-alt);
+  font-size: 0.8125rem; color: var(--_text-2);
+}
+.bpp-side[hidden] { display: none; }
+.bpp-tree { list-style: none; margin: 0; padding: 6px 0; }
+.bpp-tree ul { list-style: none; margin: 0; padding-left: 14px; }
+.bpp-tree-row {
+  display: flex; align-items: baseline; gap: 6px; width: 100%;
+  padding: 3px 10px; border: 0; background: none; text-align: left;
+  color: inherit; font: inherit; cursor: pointer;
+}
+.bpp-tree-row:hover { background: color-mix(in srgb, var(--_brand) 10%, transparent); }
+.bpp-tree-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--_brand) 16%, transparent);
+  color: var(--_text-1); font-weight: 600;
+}
+.bpp-tree-type { color: var(--_text-1); }
+.bpp-tree-name { color: var(--_text-3); font-style: italic; }
 
 /* ── Loading overlay ─────────────────────────────────────────────────────── */
 .bpp-loading {

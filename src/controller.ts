@@ -186,6 +186,7 @@ export function createPreviewer(
     const totalPages = pages.length;
 
     // Toolbar handles
+    const shell = q<HTMLElement>('.bpp');
     const toggleThumbs = q<HTMLButtonElement>('[data-toggle-thumbs]');
     const prev = q<HTMLButtonElement>('[data-prev]');
     const next = q<HTMLButtonElement>('[data-next]');
@@ -196,7 +197,9 @@ export function createPreviewer(
     const currentPageEl = q<HTMLElement>('[data-current-page]');
     const totalPagesEl = q<HTMLElement>('[data-total-pages]');
     const pageLabel = q<HTMLElement>('[data-page-label]');
+    const fullscreen = q<HTMLButtonElement>('[data-fullscreen]');
     const download = q<HTMLButtonElement>('[data-download]');
+    let isFullscreen = shell?.classList.contains('bpp-fullscreen') ?? false;
 
     const effectiveScale = (): number => {
       if (fitMode === 'custom') return customScale;
@@ -217,6 +220,12 @@ export function createPreviewer(
       if (next) next.disabled = currentPage >= totalPages;
       if (zoomOut) zoomOut.disabled = scale <= MIN_SCALE;
       if (zoomIn) zoomIn.disabled = scale >= MAX_SCALE;
+      if (fullscreen) {
+        fullscreen.classList.toggle('bpp-btn-active', isFullscreen);
+        fullscreen.setAttribute('aria-pressed', String(isFullscreen));
+        fullscreen.setAttribute('aria-label', isFullscreen ? 'Exit full screen' : 'Full screen');
+        fullscreen.setAttribute('title', isFullscreen ? 'Exit full screen' : 'Full screen');
+      }
       if (zoomSelect) {
         if (customZoom) {
           customZoom.textContent = `${Math.round(scale * 100)}%`;
@@ -248,6 +257,22 @@ export function createPreviewer(
         } catch (err) {
           console.error(`[bonniepdf-previewer] plugin "${plugin.name}" sync failed`, err);
         }
+      }
+    };
+
+    const setFullscreen = (expanded: boolean): void => {
+      isFullscreen = expanded;
+      shell?.classList.toggle('bpp-fullscreen', isFullscreen);
+      viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
+      syncToolbar();
+      const win = ownerDoc.defaultView;
+      if (typeof win?.requestAnimationFrame === 'function') {
+        win.requestAnimationFrame(() => {
+          viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
+          syncPages();
+        });
+      } else {
+        syncPages();
       }
     };
 
@@ -314,6 +339,21 @@ export function createPreviewer(
     thumbButtons.forEach(button =>
       button.addEventListener('click', () => scrollToPage(Number(button.dataset.thumb)), { signal }),
     );
+
+    // Internal-link overlays: the SVG export marks internal document links
+    // (e.g. VisualToc entries) with data-bp-link-page="N" rects; external links
+    // are real SVG <a> elements and need no wiring. Delegated on the scroller so
+    // it survives the windowed page mount/unmount.
+    scroll.addEventListener(
+      'click',
+      e => {
+        const hit = (e.target as Element | null)?.closest?.('[data-bp-link-page]');
+        if (!hit) return;
+        const n = Number(hit.getAttribute('data-bp-link-page'));
+        if (Number.isFinite(n) && n >= 1) scrollToPage(n);
+      },
+      { signal },
+    );
     zoomOut?.addEventListener(
       'click',
       () => {
@@ -347,6 +387,15 @@ export function createPreviewer(
     );
 
     // ── Download (lazy PDF) ──────────────────────────────────────────────────
+    fullscreen?.addEventListener('click', () => setFullscreen(!isFullscreen), { signal });
+    ownerDoc.addEventListener(
+      'keydown',
+      event => {
+        if (event.key === 'Escape' && isFullscreen) setFullscreen(false);
+      },
+      { signal },
+    );
+
     const filename = loadOptions.downloadFilename ?? opts.downloadFilename;
     let pdfUrl = loadOptions.pdfUrl;
     const provider = loadOptions.pdfProvider;

@@ -69,6 +69,12 @@ export function buildShell(root: ShadowRoot | HTMLElement, opts: Required<Previe
       </button>
     </div>
     <div class="bpp-sep" role="separator" aria-hidden="true"></div>
+    <div class="bpp-group" role="group" aria-label="Preview display">
+      <button type="button" class="bpp-btn" data-fullscreen aria-label="Full screen" aria-pressed="false" title="Full screen">
+        ${icon('maximize', 'bpp-icon bpp-icon-fullscreen-open')}
+        ${icon('minimize', 'bpp-icon bpp-icon-fullscreen-close')}
+      </button>
+    </div>
     <div class="bpp-group bpp-group-end" role="group" aria-label="Download">
       <button type="button" class="bpp-btn bpp-btn-download" data-download aria-label="Download PDF" title="Download PDF" disabled>
         ${icon('download')}

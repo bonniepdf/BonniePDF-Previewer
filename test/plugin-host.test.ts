@@ -56,6 +56,32 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
+  it('toggles the previewer full-screen viewport mode', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, {});
+    handle.load(pages(1));
+
+    const shell = host.querySelector('.bpp');
+    const fullscreen = host.querySelector('[data-fullscreen]') as HTMLButtonElement;
+
+    expect(fullscreen).toBeTruthy();
+    expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
+    expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
+
+    fullscreen.click();
+    expect(shell?.classList.contains('bpp-fullscreen')).toBe(true);
+    expect(fullscreen.getAttribute('aria-pressed')).toBe('true');
+    expect(fullscreen.getAttribute('aria-label')).toBe('Exit full screen');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
+    expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
+
+    handle.dispose();
+    host.remove();
+  });
+
   it('runs plugin lifecycle hooks in order', () => {
     const calls: string[] = [];
     const probe: PreviewerPlugin = {

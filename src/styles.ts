@@ -49,6 +49,15 @@ export const STYLES = /* css */ `
   border-color: transparent;
 }
 
+.bpp-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  border-radius: 0;
+  z-index: 2147483647;
+}
+
 .bpp-empty {
   flex: 1;
   display: flex;
@@ -104,6 +113,8 @@ export const STYLES = /* css */ `
 .bpp-icon { width: 16px; height: 16px; flex-shrink: 0; }
 .bpp-btn-active .bpp-icon-thumbs-closed,
 .bpp-btn:not(.bpp-btn-active) .bpp-icon-thumbs-open { display: none; }
+.bpp-fullscreen .bpp-icon-fullscreen-open,
+.bpp:not(.bpp-fullscreen) .bpp-icon-fullscreen-close { display: none; }
 .bpp-sep { width: 1px; height: 20px; margin: 0 6px; background: var(--_divider); flex-shrink: 0; }
 .bpp-pages-label {
   display: flex; align-items: center; gap: 4px; min-width: 56px; justify-content: center;
@@ -141,6 +152,9 @@ export const STYLES = /* css */ `
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .bpp-thumb-canvas svg { display: block; width: 100%; height: auto; }
+/* Link overlays stay inert in thumbnails - a thumbnail click always navigates
+   to the page, never follows the document's links. */
+.bpp-thumb-canvas svg a, .bpp-thumb-canvas svg [data-bp-link-page] { pointer-events: none; }
 .bpp-thumb:hover .bpp-thumb-canvas { border-color: var(--_brand); }
 .bpp-thumb-active .bpp-thumb-canvas { border-color: var(--_brand); box-shadow: 0 0 0 1px var(--_brand); }
 .bpp-thumb-label { font-size: 0.75rem; font-variant-numeric: tabular-nums; }

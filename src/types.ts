@@ -5,16 +5,16 @@
 // already-rendered SVG pages (the output of `@bonniepdf/core`'s
 // `Document.generateSvgDocumentAsync()` / `exportSvgPagesAsync`) plus an optional
 // way to fetch the real PDF bytes for download. It knows nothing about the
-// generator, so any source of standalone SVG pages can drive it.
+// generator, so any source of SVG pages can drive it.
 // ---------------------------------------------------------------------------
 
 /**
- * A single previewable page: its standalone `<svg>` markup plus its intrinsic
- * size in PDF points. The size drives zoom / fit-to-page maths without re-parsing
- * the SVG on every layout.
+ * A single previewable page: its `<svg>` markup plus its intrinsic size in PDF
+ * points. Hosts can pass `fontFaceCss` through `LoadOptions` once per document
+ * instead of inlining duplicate font CSS into every page SVG.
  */
 export interface PreviewPage {
-  /** Standalone `<svg>…</svg>` markup for the page. */
+  /** `<svg>...</svg>` markup for the page. */
   svg: string;
   /** Page width in PDF points (the SVG's intrinsic width). */
   width: number;

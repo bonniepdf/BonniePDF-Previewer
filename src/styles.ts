@@ -159,7 +159,13 @@ export const STYLES = /* css */ `
 .bpp-thumb-active .bpp-thumb-canvas { border-color: var(--_brand); box-shadow: 0 0 0 1px var(--_brand); }
 .bpp-thumb-label { font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .bpp-thumb-active .bpp-thumb-label { color: var(--_text-1); font-weight: 600; }
-.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
+/* scrollbar-gutter: stable reserves the vertical scrollbar's space at all
+   times so the scroll container's clientWidth doesn't jump when the scrollbar
+   appears/disappears. Without it, fit-width sizing forms a feedback loop with
+   the ResizeObserver (width -> page scale -> content height -> scrollbar ->
+   width...), which oscillates forever for documents whose fitted height lands
+   right at the viewport boundary (e.g. the pdf-compliance example). */
+.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 .bpp-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; min-width: min-content; }
 .bpp-page {
   position: relative;

@@ -43,13 +43,44 @@ export interface SnapshotRect {
   height: number;
 }
 
+/**
+ * Intrinsic accessibility facts for a node, mirroring `@bonniepdf/core`'s
+ * `NodeAccessibility`. Present only when the element declares a role.
+ */
+export interface NodeAccessibility {
+  /** Resolved PDF structure tag, e.g. `'H1'`, `'P'`, `'Figure'`, `'TH'`. */
+  role: string;
+  /** True when the element contributes real content to the structure tree. */
+  tagged: boolean;
+  /** True when the element renders as an `/Artifact` (out of reading order). */
+  artifact: boolean;
+  /** `/Alt` alternate text, when supplied. */
+  alt?: string;
+  /** Author explicitly marked the element decorative. */
+  decorative?: boolean;
+  /** Heading level 1–6 for `H1`…`H6`. */
+  headingLevel?: number;
+  /** True for image-like elements (figure candidates). */
+  imageLike?: boolean;
+}
+
 /** One node in the layout tree. */
 export interface SnapshotNode {
   id: string;
   type: string;
   name?: string;
   rects: SnapshotRect[];
+  /** Intrinsic accessibility facts, when the element declares a role. */
+  a11y?: NodeAccessibility;
   children: SnapshotNode[];
+}
+
+/** Document-level accessibility/compliance context, mirroring core's `SnapshotMeta`. */
+export interface SnapshotMeta {
+  accessibilityMode: number;
+  conformance: string;
+  language?: string;
+  title?: string;
 }
 
 /** The captured layout of a document, as consumed by the structure view. */
@@ -57,6 +88,42 @@ export interface LayoutSnapshot {
   version: number;
   pages: { width: number; height: number }[];
   root: SnapshotNode;
+  /** Document-level accessibility/compliance context. */
+  meta?: SnapshotMeta;
+}
+
+// ---------------------------------------------------------------------------
+// Compliance findings (mirror of @bonniepdf/core's ComplianceReport).
+//
+// Declared here, not imported, so the previewer stays decoupled from core —
+// exactly as it is for the snapshot. Any object matching this shape (e.g. the
+// result of `evaluateCompliance(snapshot)`) drives the compliance-view plugin.
+// ---------------------------------------------------------------------------
+
+/** Severity of a compliance finding. */
+export type ComplianceSeverity = 'error' | 'warning' | 'info';
+
+/** One reported accessibility/compliance issue. */
+export interface ComplianceFinding {
+  code: string;
+  severity: ComplianceSeverity;
+  standard: string;
+  clause: string;
+  message: string;
+  fixHint?: string;
+  /** The node this finding anchors to; omitted for document-level findings. */
+  nodeId?: string;
+  role?: string;
+  page?: number;
+}
+
+/** The result of evaluating a snapshot for compliance. */
+export interface ComplianceReport {
+  findings: ComplianceFinding[];
+  passed: boolean;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
 }
 
 /**
@@ -70,10 +137,33 @@ export interface PreviewerPluginContext {
   /** Adds a control to the toolbar's trailing group. */
   addToolbarItem(element: HTMLElement): void;
   /**
-   * Adds a collapsible side panel in the body (beside the page scroll area).
-   * Returns a handle to show/hide it.
+   * Registers a side panel in the body (beside the page scroll area). All
+   * registered panels share **one** collapsible region with a tab strip — only
+   * one panel is ever visible at a time, and a single toolbar button toggles the
+   * region. This keeps multiple inspector plugins (structure, compliance, …) from
+   * stacking as competing side-by-side panels.
+   *
+   * - `defaultOpen`: open the region on this panel when it registers (the first
+   *   panel to request it wins; later panels become inactive tabs).
+   * - `onVisibilityChange`: called with `true` when this panel becomes the active,
+   *   visible tab and `false` when it stops being (region closed or switched away).
+   *   Plugins use it to paint/clear on-page overlays instead of tracking their own
+   *   toolbar toggle.
+   *
+   * The returned handle drives the panel: `setVisible` activates/closes it, and
+   * `setBadge` shows a small count/severity badge on its tab (and contributes a
+   * dot to the shared toolbar toggle so issues are visible while collapsed).
    */
-  addSidePanel(panel: { id: string; label: string; element: HTMLElement }): { setVisible(visible: boolean): void };
+  addSidePanel(panel: {
+    id: string;
+    label: string;
+    element: HTMLElement;
+    defaultOpen?: boolean;
+    onVisibilityChange?: (visible: boolean) => void;
+  }): {
+    setVisible(visible: boolean): void;
+    setBadge(text: string | null, tone?: 'error' | 'warning' | 'info' | 'ok'): void;
+  };
   /** The `.bpp-page` host element for a 0-based page index, or null. */
   pageElement(index: number): HTMLElement | null;
   /**
@@ -95,6 +185,8 @@ export interface PreviewerLoadContext extends PreviewerPluginContext {
   pages: PreviewPage[];
   /** The layout snapshot, when the host was given one via {@link LoadOptions.snapshot}. */
   snapshot?: LayoutSnapshot;
+  /** The compliance report, when the host was given one via {@link LoadOptions.report}. */
+  report?: ComplianceReport;
 }
 
 /** State pushed to plugins whenever the viewport scale or current page changes. */
@@ -157,10 +249,17 @@ export interface LoadOptions {
   downloadFilename?: string;
   /**
    * The layout snapshot for this document (from `generateSvgDocumentAsync({
-   * captureLayout: true })`). Consumed by the structure-view plugin; ignored
-   * when no plugin uses it.
+   * captureLayout: true })`). Consumed by the structure-view and compliance-view
+   * plugins; ignored when no plugin uses it.
    */
   snapshot?: LayoutSnapshot;
+  /**
+   * A precomputed compliance report for this document (from core's
+   * `evaluateCompliance(snapshot)`). Consumed by the compliance-view plugin. When
+   * omitted while a `snapshot` is present, the plugin still shows role/status
+   * badges from the snapshot, just without severity findings.
+   */
+  report?: ComplianceReport;
 }
 
 /** Controls a created previewer instance. Returned by `createPreviewer`. */

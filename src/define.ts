@@ -1,6 +1,7 @@
 import { createPreviewer } from './controller';
 import { structureView } from './structure-view';
-import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewPage } from './types';
+import { complianceView } from './compliance-view';
+import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewerPlugin, PreviewPage } from './types';
 
 /**
  * `<bonnie-pdf-previewer>` — a framework-agnostic PDF preview element.
@@ -52,11 +53,14 @@ export class BonniePdfPreviewerElement extends HTMLElement {
 
   private readOptions(): PreviewerOptions {
     const showThumbs = this.getAttribute('show-thumbnails');
-    // The structure view is opt-in via the `structure-view` boolean attribute,
-    // so the default element is byte-for-byte the previous component.
-    const wantsStructure = this.hasAttribute('structure-view');
+    // Plugins are opt-in via boolean attributes, so the default element is
+    // byte-for-byte the previous component. `structure-view` adds the layout
+    // tree; `compliance-view` adds the accessibility/compliance panel.
+    const plugins: PreviewerPlugin[] = [];
+    if (this.hasAttribute('structure-view')) plugins.push(structureView());
+    if (this.hasAttribute('compliance-view')) plugins.push(complianceView());
     return {
-      plugins: wantsStructure ? [structureView()] : undefined,
+      plugins: plugins.length > 0 ? plugins : undefined,
       showThumbnails: showThumbs === null ? undefined : showThumbs !== 'false',
       fitMode: this.getAttribute('fit-mode') === 'fit-width' ? 'fit-width' : 'fit-page',
       title: this.getAttribute('label') ?? undefined,

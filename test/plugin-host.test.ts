@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createPreviewer } from '../src/controller';
 import { structureView } from '../src/structure-view';
+import { complianceView } from '../src/compliance-view';
 import type { LayoutSnapshot, PreviewPage, PreviewerPlugin } from '../src/types';
 
 function pageSvg(n: number, w = 200, h = 300): string {
@@ -58,6 +59,12 @@ describe('previewer plugin host', () => {
 
   it('toggles the previewer full-screen viewport mode', () => {
     const host = document.createElement('div');
+    const showPopover = vi.fn();
+    const hidePopover = vi.fn();
+    Object.defineProperties(host, {
+      showPopover: { configurable: true, value: showPopover },
+      hidePopover: { configurable: true, value: hidePopover },
+    });
     document.body.append(host);
     const handle = createPreviewer(host, {});
     handle.load(pages(1));
@@ -70,11 +77,17 @@ describe('previewer plugin host', () => {
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
 
     fullscreen.click();
+    expect(showPopover).toHaveBeenCalledOnce();
+    expect(host.getAttribute('popover')).toBe('manual');
+    expect(host.classList.contains('bpp-popover-host')).toBe(true);
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(true);
     expect(fullscreen.getAttribute('aria-pressed')).toBe('true');
     expect(fullscreen.getAttribute('aria-label')).toBe('Exit full screen');
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(hidePopover).toHaveBeenCalledOnce();
+    expect(host.hasAttribute('popover')).toBe(false);
+    expect(host.classList.contains('bpp-popover-host')).toBe(false);
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
 
@@ -167,6 +180,42 @@ describe('previewer plugin host', () => {
     expect(selected?.querySelector('.bpp-tree-name')?.textContent).toBe('title');
     // And its highlight is painted.
     expect(host.querySelectorAll('.bpp-hl').length).toBeGreaterThan(0);
+
+    handle.dispose();
+    host.remove();
+  });
+
+  it('two inspector plugins share one tabbed panel — only one visible at a time', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, {
+      plugins: [structureView({ openByDefault: true }), complianceView({ openByDefault: true })],
+    });
+    handle.load(pages(2), { snapshot: snapshotFor2Pages() });
+
+    // Exactly one side region, with a two-tab strip.
+    expect(host.querySelectorAll('.bpp-side')).toHaveLength(1);
+    const tabs = host.querySelectorAll('.bpp-side-tab');
+    expect(tabs).toHaveLength(2);
+    expect(host.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(false);
+
+    const structurePanel = host.querySelector<HTMLElement>('[data-side-panel="structure"]')!;
+    const compliancePanel = host.querySelector<HTMLElement>('[data-side-panel="compliance"]')!;
+    // Structure registered first, so it wins the default-open race; compliance is a quiet tab.
+    expect(structurePanel.hidden).toBe(false);
+    expect(compliancePanel.hidden).toBe(true);
+
+    // Switching to the compliance tab hides the structure panel (mutually exclusive).
+    const complianceTab = Array.from(tabs).find(t => t.textContent?.includes('Accessibility')) as HTMLButtonElement;
+    complianceTab.click();
+    expect(compliancePanel.hidden).toBe(false);
+    expect(structurePanel.hidden).toBe(true);
+
+    // The single toolbar toggle collapses the whole region.
+    const toggle = host.querySelector<HTMLButtonElement>('.bpp-side-toggle')!;
+    expect(toggle).toBeTruthy();
+    toggle.click();
+    expect(host.querySelector<HTMLElement>('.bpp-side')!.hidden).toBe(true);
 
     handle.dispose();
     host.remove();

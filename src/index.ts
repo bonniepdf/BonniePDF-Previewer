@@ -9,6 +9,8 @@ export { BonniePdfPreviewerElement, defineBonniePdfPreviewer } from './define';
 export { svgStringsToPages } from './types';
 export { structureView } from './structure-view';
 export type { StructureViewOptions } from './structure-view';
+export { complianceView } from './compliance-view';
+export type { ComplianceViewOptions } from './compliance-view';
 export type {
   PreviewPage,
   FitMode,
@@ -22,4 +24,9 @@ export type {
   LayoutSnapshot,
   SnapshotNode,
   SnapshotRect,
+  NodeAccessibility,
+  SnapshotMeta,
+  ComplianceReport,
+  ComplianceFinding,
+  ComplianceSeverity,
 } from './types';

@@ -43,9 +43,9 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
   const openByDefault = options.openByDefault ?? true;
 
   let ctx: PreviewerPluginContext | null = null;
-  let panel: { setVisible(v: boolean): void } | null = null;
   let panelEl: HTMLElement | null = null;
-  let toggleButton: HTMLButtonElement | null = null;
+  // Tracks whether this panel is the active, visible tab (host-driven via
+  // onVisibilityChange), so the page-click reverse-link only fires when shown.
   let visible = false;
 
   const rowsById = new Map<string, HTMLElement>();
@@ -54,14 +54,6 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
   let rootNode: SnapshotNode | null = null;
   // Page-click listeners are torn down and re-attached per load.
   let clickAbort: AbortController | null = null;
-
-  function setVisible(next: boolean): void {
-    visible = next;
-    panel?.setVisible(next);
-    toggleButton?.setAttribute('aria-pressed', String(next));
-    toggleButton?.classList.toggle('bpp-btn-active', next);
-    if (!next) clearHighlights();
-  }
 
   function clearHighlights(): void {
     for (const h of highlights) h.element.remove();
@@ -204,27 +196,24 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
       ctx = context;
       const doc = context.ownerDocument;
 
-      // Toolbar toggle.
-      toggleButton = doc.createElement('button');
-      toggleButton.type = 'button';
-      toggleButton.className = 'bpp-btn';
-      toggleButton.textContent = '⌗';
-      toggleButton.title = `Toggle ${label.toLowerCase()} panel`;
-      toggleButton.setAttribute('aria-label', `Toggle ${label} panel`);
-      toggleButton.setAttribute('aria-pressed', 'false');
-      toggleButton.addEventListener('click', () => setVisible(!visible));
-      context.addToolbarItem(toggleButton);
-
-      // Side panel shell.
+      // Side panel shell. The host owns the toolbar toggle and tab; this plugin
+      // only reacts to visibility so it can drop highlights when hidden.
       panelEl = doc.createElement('div');
       panelEl.className = 'bpp-tree-host';
-      panel = context.addSidePanel({ id: 'structure', label, element: panelEl });
+      context.addSidePanel({
+        id: 'structure',
+        label,
+        element: panelEl,
+        defaultOpen: openByDefault,
+        onVisibilityChange: v => {
+          visible = v;
+          if (!v) clearHighlights();
+        },
+      });
 
       return () => {
         ctx = null;
-        panel = null;
         panelEl = null;
-        toggleButton = null;
       };
     },
 
@@ -240,7 +229,7 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
       if (!context.snapshot) {
         panelEl.textContent = 'No structure data for this document.';
-        setVisible(false);
+        clearHighlights();
         return;
       }
 
@@ -276,8 +265,6 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
           { signal: clickAbort.signal },
         );
       }
-
-      if (openByDefault) setVisible(true);
     },
 
     sync({ scale }) {

@@ -22,11 +22,37 @@ export const STYLES = /* css */ `
   --_radius-md: var(--bpdf-radius, 8px);
   --_radius-sm: 6px;
 
+  /* Compliance severity palette (overridable via --bpdf-* tokens). */
+  --_sev-error: var(--bpdf-c-error, #dc2626);
+  --_sev-warning: var(--bpdf-c-warning, #d97706);
+  --_sev-info: var(--bpdf-c-info, #2563eb);
+  --_sev-ok: var(--bpdf-c-success, #16a34a);
+
   display: block;
   height: 100%;
   min-height: 0;
   /* A clean default font for the chrome; the SVG pages carry their own fonts. */
   font-family: var(--bpdf-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
+}
+
+/* Maximized web components enter the browser's top layer via the Popover API,
+   so host-page stacking contexts (sticky headers, transformed ancestors, etc.)
+   cannot cover the previewer. The class selector provides the same sizing for
+   createPreviewer() instances mounted directly into a light-DOM element. */
+:host(:popover-open),
+.bpp-popover-host:popover-open {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: var(--_bg-alt);
+  z-index: 2147483647;
 }
 
 * { box-sizing: border-box; }
@@ -190,13 +216,55 @@ export const STYLES = /* css */ `
   border-style: dashed;
 }
 
-/* ── Plugin side panel (structure tree) ───────────────────────────────────── */
+/* ── Shared inspector side panel (tabbed: structure / compliance / …) ──────── */
 .bpp-side {
-  width: 280px; flex-shrink: 0; overflow: auto;
+  width: 280px; flex-shrink: 0;
+  display: flex; flex-direction: column; min-height: 0;
   border-left: 1px solid var(--_divider); background: var(--_bg-alt);
   font-size: 0.8125rem; color: var(--_text-2);
 }
 .bpp-side[hidden] { display: none; }
+/* Tab strip: one tab per registered panel; hidden when there's only one. */
+.bpp-side-tabs {
+  display: flex; flex-shrink: 0; gap: 2px; padding: 6px 6px 0;
+  border-bottom: 1px solid var(--_divider);
+}
+.bpp-side-tabs[hidden] { display: none; }
+.bpp-side-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border: 0; border-bottom: 2px solid transparent;
+  background: none; color: var(--_text-2); font: inherit; font-size: 0.8125rem;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.bpp-side-tab:hover { color: var(--_text-1); }
+.bpp-side-tab-active {
+  color: var(--_brand); border-bottom-color: var(--_brand);
+}
+.bpp-side-tab-badge {
+  min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; font-size: 0.625rem; font-weight: 700; line-height: 1; color: #fff;
+}
+.bpp-side-tab-badge[hidden] { display: none; }
+.bpp-side-tab-badge-error { background: var(--_sev-error); }
+.bpp-side-tab-badge-warning { background: var(--_sev-warning); }
+.bpp-side-tab-badge-info { background: var(--_sev-info); }
+.bpp-side-tab-badge-ok { background: var(--_sev-ok); }
+/* Body: holds every panel's element; only the active one is shown. */
+.bpp-side-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.bpp-side-body > [hidden] { display: none; }
+.bpp-side-body > * { flex: 1 1 auto; min-height: 0; }
+/* Toolbar toggle: a dot signals unseen issues while the panel is collapsed. */
+.bpp-side-toggle { position: relative; }
+.bpp-side-toggle-dot {
+  position: absolute; top: 3px; right: 3px;
+  width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--_bg);
+}
+.bpp-side-toggle-dot[hidden] { display: none; }
+.bpp-side-toggle-dot-error { background: var(--_sev-error); }
+.bpp-side-toggle-dot-warning { background: var(--_sev-warning); }
+.bpp-side-toggle-dot-info { background: var(--_sev-info); }
 .bpp-tree { list-style: none; margin: 0; padding: 6px 0; }
 .bpp-tree ul { list-style: none; margin: 0; padding-left: 14px; }
 .bpp-tree-row {
@@ -230,6 +298,105 @@ export const STYLES = /* css */ `
 }
 @keyframes bpp-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bpp-spinner { animation-duration: 2s; } }
+
+/* ── Compliance view plugin ──────────────────────────────────────────────── */
+.bpp-cv-host { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+/* Summary block. */
+.bpp-cv-summary {
+  padding: 10px 12px; border-bottom: 1px solid var(--_divider);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.bpp-cv-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.bpp-cv-pill {
+  padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+  color: #fff;
+}
+.bpp-cv-pill-error { background: var(--_sev-error); }
+.bpp-cv-pill-warning { background: var(--_sev-warning); }
+.bpp-cv-pill-info { background: var(--_sev-info); }
+.bpp-cv-pill-zero { opacity: 0.4; }
+.bpp-cv-verdict { font-size: 0.8125rem; font-weight: 600; }
+.bpp-cv-verdict-pass { color: var(--_sev-ok); }
+.bpp-cv-verdict-fail { color: var(--_sev-error); }
+.bpp-cv-filter { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--_text-2); cursor: pointer; }
+
+/* Section titles. */
+.bpp-cv-section-title {
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--_text-3); font-weight: 700; padding: 8px 12px 4px;
+}
+.bpp-cv-doc-findings { display: flex; flex-direction: column; gap: 6px; }
+
+/* Tree area (scrolls). */
+.bpp-cv-tree-host { flex: 1 1 auto; overflow: auto; min-height: 60px; }
+.bpp-cv-tree { padding: 4px 0; }
+.bpp-cv-row { align-items: center; }
+
+/* Severity dot. */
+.bpp-cv-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--_text-3); }
+.bpp-cv-dot-error { background: var(--_sev-error); }
+.bpp-cv-dot-warning { background: var(--_sev-warning); }
+.bpp-cv-dot-info { background: var(--_sev-info); }
+.bpp-cv-dot-ok { background: var(--_sev-ok); }
+.bpp-cv-dot-artifact { background: transparent; border: 1px dashed var(--_text-3); }
+.bpp-cv-dot-none { background: var(--_divider); }
+
+/* Role chips. */
+.bpp-cv-role {
+  flex: 0 0 auto; padding: 0 5px; border-radius: 4px; font-size: 0.6875rem;
+  font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.5;
+  background: var(--_bg-soft); color: var(--_text-2); border: 1px solid var(--_divider);
+}
+.bpp-cv-role-heading { background: color-mix(in srgb, var(--_brand) 14%, transparent); color: var(--_brand); border-color: transparent; }
+.bpp-cv-role-figure { background: color-mix(in srgb, var(--_sev-info) 14%, transparent); color: var(--_sev-info); border-color: transparent; }
+.bpp-cv-role-table { background: color-mix(in srgb, var(--_sev-ok) 16%, transparent); color: var(--_sev-ok); border-color: transparent; }
+.bpp-cv-role-artifact { background: transparent; color: var(--_text-3); border-style: dashed; }
+
+/* Detail pane. */
+.bpp-cv-detail { border-top: 1px solid var(--_divider); max-height: 42%; overflow: auto; flex: 0 0 auto; }
+.bpp-cv-detail-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.bpp-cv-detail-head { display: flex; align-items: center; gap: 6px; padding: 0 12px 6px; }
+.bpp-cv-detail-type { font-weight: 700; color: var(--_text-1); font-size: 0.8125rem; }
+.bpp-cv-attr { margin: 0 12px; font-size: 0.75rem; color: var(--_text-2); font-style: italic; }
+.bpp-cv-empty { padding: 4px 12px; font-size: 0.75rem; color: var(--_text-3); }
+
+/* Finding cards. */
+.bpp-cv-finding {
+  border: 1px solid var(--_divider); border-left-width: 3px; border-radius: var(--_radius-sm);
+  padding: 8px 10px; background: var(--_bg); display: flex; flex-direction: column; gap: 5px;
+}
+.bpp-cv-finding-error { border-left-color: var(--_sev-error); }
+.bpp-cv-finding-warning { border-left-color: var(--_sev-warning); }
+.bpp-cv-finding-info { border-left-color: var(--_sev-info); }
+.bpp-cv-finding-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bpp-cv-badge {
+  padding: 1px 6px; border-radius: 4px; font-size: 0.625rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em; color: #fff;
+}
+.bpp-cv-badge-error { background: var(--_sev-error); }
+.bpp-cv-badge-warning { background: var(--_sev-warning); }
+.bpp-cv-badge-info { background: var(--_sev-info); }
+.bpp-cv-clause { font-size: 0.6875rem; color: var(--_text-3); font-variant-numeric: tabular-nums; }
+.bpp-cv-msg { margin: 0; font-size: 0.75rem; color: var(--_text-1); line-height: 1.45; }
+.bpp-cv-fix { margin: 0; font-size: 0.75rem; color: var(--_text-2); line-height: 1.45; }
+.bpp-cv-fix-label { font-weight: 700; color: var(--_sev-ok); }
+.bpp-cv-jump {
+  align-self: flex-start; margin-top: 2px; padding: 3px 8px; border: 1px solid var(--_divider);
+  border-radius: var(--_radius-sm); background: var(--_bg-soft); color: var(--_brand);
+  font: inherit; font-size: 0.6875rem; font-weight: 600; cursor: pointer;
+}
+.bpp-cv-jump:hover { background: var(--_brand-soft); }
+
+/* On-page markers (issues heatmap) + selection. */
+.bpp-cv-mark { position: absolute; box-sizing: border-box; border-radius: 1px; border: 1px solid transparent; }
+.bpp-cv-mark-error { background: color-mix(in srgb, var(--_sev-error) 12%, transparent); border-color: color-mix(in srgb, var(--_sev-error) 55%, transparent); }
+.bpp-cv-mark-warning { background: color-mix(in srgb, var(--_sev-warning) 12%, transparent); border-color: color-mix(in srgb, var(--_sev-warning) 55%, transparent); }
+.bpp-cv-mark-info { background: color-mix(in srgb, var(--_sev-info) 10%, transparent); border-color: color-mix(in srgb, var(--_sev-info) 45%, transparent); }
+.bpp-cv-sel { position: absolute; box-sizing: border-box; border-radius: 1px; background: color-mix(in srgb, var(--_brand) 16%, transparent); border: 2px solid var(--_brand); }
+.bpp-cv-sel-error { background: color-mix(in srgb, var(--_sev-error) 20%, transparent); border-color: var(--_sev-error); }
+.bpp-cv-sel-warning { background: color-mix(in srgb, var(--_sev-warning) 20%, transparent); border-color: var(--_sev-warning); }
+.bpp-cv-sel-info { background: color-mix(in srgb, var(--_sev-info) 18%, transparent); border-color: var(--_sev-info); }
 
 /* ── Custom Scrollbars ───────────────────────────────────────────────────── */
 .bpp-styled-scrollbars .bpp-thumbs,

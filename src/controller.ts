@@ -1,4 +1,5 @@
 import { buildShell, namespaceSvgIds } from './dom';
+import { icon } from './icons';
 import type {
   LoadOptions,
   PreviewerHandle,
@@ -50,6 +51,7 @@ export function createPreviewer(
   let observers: Array<{ disconnect(): void }> = [];
   let fontStyle: HTMLStyleElement | null = null;
   let disposed = false;
+  let exitFullscreenMode: (() => void) | null = null;
 
   // ── Plugin host ────────────────────────────────────────────────────────────
   // Per-load state the plugin context closes over via mutable refs, so a single
@@ -61,25 +63,171 @@ export function createPreviewer(
   let curScale: () => number = () => 1;
   let curScrollToPage: (n: number) => void = () => {};
 
+  // ── Shared side-panel region ────────────────────────────────────────────────
+  // All plugin side panels live in ONE collapsible region with a tab strip; only
+  // one panel shows at a time and a single toolbar button toggles the region.
+  type Tone = 'error' | 'warning' | 'info' | 'ok';
+  interface RegisteredPanel {
+    id: string;
+    element: HTMLElement;
+    tabBtn: HTMLButtonElement;
+    badgeEl: HTMLElement;
+    onVisibilityChange?: (visible: boolean) => void;
+    badgeTone: Tone | null;
+  }
+  const sidePanels: RegisteredPanel[] = [];
+  let activePanelId: string | null = null;
+  let regionVisible = false;
+  let sideAside: HTMLElement | null = null;
+  let sideTabs: HTMLElement | null = null;
+  let sideBody: HTMLElement | null = null;
+  let inspectorToggle: HTMLButtonElement | null = null;
+  let inspectorDot: HTMLElement | null = null;
+
+  const TONE_RANK: Record<Tone, number> = { error: 3, warning: 2, info: 1, ok: 0 };
+
+  function updateInspectorDot(): void {
+    if (!inspectorDot) return;
+    let worst: Tone | null = null;
+    for (const p of sidePanels) {
+      if (p.badgeTone && (worst === null || TONE_RANK[p.badgeTone] > TONE_RANK[worst])) worst = p.badgeTone;
+    }
+    if (worst && worst !== 'ok') {
+      inspectorDot.hidden = false;
+      inspectorDot.className = `bpp-side-toggle-dot bpp-side-toggle-dot-${worst}`;
+    } else {
+      inspectorDot.hidden = true;
+    }
+  }
+
+  function updateTabStripVisibility(): void {
+    // The tab strip is only useful when there is something to switch between.
+    if (sideTabs) sideTabs.hidden = sidePanels.length < 2;
+  }
+
+  function showRegion(): void {
+    regionVisible = true;
+    if (sideAside) sideAside.hidden = false;
+    inspectorToggle?.setAttribute('aria-pressed', 'true');
+    inspectorToggle?.classList.add('bpp-btn-active');
+  }
+
+  function hideRegion(): void {
+    regionVisible = false;
+    if (sideAside) sideAside.hidden = true;
+    inspectorToggle?.setAttribute('aria-pressed', 'false');
+    inspectorToggle?.classList.remove('bpp-btn-active');
+    sidePanels.find(p => p.id === activePanelId)?.onVisibilityChange?.(false);
+  }
+
+  function activatePanel(id: string | null): void {
+    if (!id) return;
+    const next = sidePanels.find(p => p.id === id);
+    if (!next) return;
+    // Clicking the already-active tab while open is a no-op.
+    if (regionVisible && activePanelId === id) return;
+
+    const prevId = activePanelId;
+    if (!regionVisible) showRegion();
+    if (prevId && prevId !== id) {
+      const prev = sidePanels.find(p => p.id === prevId);
+      if (prev) {
+        prev.element.hidden = true;
+        prev.tabBtn.setAttribute('aria-selected', 'false');
+        prev.tabBtn.classList.remove('bpp-side-tab-active');
+        prev.onVisibilityChange?.(false);
+      }
+    }
+    activePanelId = id;
+    next.element.hidden = false;
+    next.tabBtn.setAttribute('aria-selected', 'true');
+    next.tabBtn.classList.add('bpp-side-tab-active');
+    next.onVisibilityChange?.(true);
+  }
+
+  function ensureSideChrome(): void {
+    if (sideAside) return;
+    sideAside = ownerDoc.createElement('aside');
+    sideAside.className = 'bpp-side';
+    sideAside.hidden = true;
+    sideAside.setAttribute('aria-label', 'Inspector');
+    sideTabs = ownerDoc.createElement('div');
+    sideTabs.className = 'bpp-side-tabs';
+    sideTabs.setAttribute('role', 'tablist');
+    sideTabs.hidden = true;
+    sideBody = ownerDoc.createElement('div');
+    sideBody.className = 'bpp-side-body';
+    sideAside.append(sideTabs, sideBody);
+    q<HTMLElement>('.bpp-body')?.append(sideAside);
+
+    inspectorToggle = ownerDoc.createElement('button');
+    inspectorToggle.type = 'button';
+    inspectorToggle.className = 'bpp-btn bpp-side-toggle';
+    inspectorToggle.title = 'Toggle inspector panel';
+    inspectorToggle.setAttribute('aria-label', 'Toggle inspector panel');
+    inspectorToggle.setAttribute('aria-pressed', 'false');
+    inspectorToggle.innerHTML = icon('panel-right', 'bpp-icon');
+    inspectorDot = ownerDoc.createElement('span');
+    inspectorDot.className = 'bpp-side-toggle-dot';
+    inspectorDot.hidden = true;
+    inspectorToggle.append(inspectorDot);
+    inspectorToggle.addEventListener('click', () => {
+      if (regionVisible) hideRegion();
+      else activatePanel(activePanelId ?? sidePanels[0]?.id ?? null);
+    });
+    (q<HTMLElement>('[data-toolbar-end]') ?? q<HTMLElement>('.bpp-toolbar'))?.append(inspectorToggle);
+  }
+
   const pluginContext: PreviewerPluginContext = {
     ownerDocument: ownerDoc,
     addToolbarItem(element) {
       const slot = q<HTMLElement>('[data-toolbar-end]') ?? q<HTMLElement>('.bpp-toolbar');
       slot?.append(element);
     },
-    addSidePanel({ id, label, element }) {
-      const body = q<HTMLElement>('.bpp-body');
-      const aside = ownerDoc.createElement('aside');
-      aside.className = 'bpp-side';
-      aside.dataset.sidePanel = id;
-      aside.setAttribute('aria-label', label);
-      aside.hidden = true;
-      aside.append(element);
-      // Insert after the page scroll area (right-hand rail).
-      body?.append(aside);
+    addSidePanel({ id, label, element, defaultOpen, onVisibilityChange }) {
+      ensureSideChrome();
+      const tabBtn = ownerDoc.createElement('button');
+      tabBtn.type = 'button';
+      tabBtn.className = 'bpp-side-tab';
+      tabBtn.setAttribute('role', 'tab');
+      tabBtn.setAttribute('aria-selected', 'false');
+      const labelSpan = ownerDoc.createElement('span');
+      labelSpan.className = 'bpp-side-tab-label';
+      labelSpan.textContent = label;
+      const badgeEl = ownerDoc.createElement('span');
+      badgeEl.className = 'bpp-side-tab-badge';
+      badgeEl.hidden = true;
+      tabBtn.append(labelSpan, badgeEl);
+      tabBtn.addEventListener('click', () => activatePanel(id));
+      sideTabs!.append(tabBtn);
+
+      element.dataset.sidePanel = id;
+      element.hidden = true;
+      sideBody!.append(element);
+
+      const panel: RegisteredPanel = { id, element, tabBtn, badgeEl, onVisibilityChange, badgeTone: null };
+      sidePanels.push(panel);
+      updateTabStripVisibility();
+      // The first panel that asks to open wins; later panels become quiet tabs.
+      if (defaultOpen && !regionVisible && activePanelId === null) activatePanel(id);
+
       return {
         setVisible(visible: boolean) {
-          aside.hidden = !visible;
+          if (visible) activatePanel(id);
+          else if (activePanelId === id && regionVisible) hideRegion();
+        },
+        setBadge(text: string | null, tone: Tone = 'info') {
+          if (text == null || text === '') {
+            badgeEl.hidden = true;
+            badgeEl.textContent = '';
+            panel.badgeTone = null;
+          } else {
+            badgeEl.hidden = false;
+            badgeEl.textContent = text;
+            badgeEl.className = `bpp-side-tab-badge bpp-side-tab-badge-${tone}`;
+            panel.badgeTone = tone;
+          }
+          updateInspectorDot();
         },
       };
     },
@@ -260,7 +408,18 @@ export function createPreviewer(
       }
     };
 
-    const setFullscreen = (expanded: boolean): void => {
+    type FullscreenTopLayer = 'popover' | 'native' | null;
+    const hostPopoverIsOpen = (): boolean => {
+      try {
+        return hostEl.matches(':popover-open');
+      } catch {
+        return false;
+      }
+    };
+    let fullscreenTopLayer: FullscreenTopLayer =
+      ownerDoc.fullscreenElement === hostEl ? 'native' : hostPopoverIsOpen() ? 'popover' : null;
+
+    const applyFullscreenState = (expanded: boolean): void => {
       isFullscreen = expanded;
       shell?.classList.toggle('bpp-fullscreen', isFullscreen);
       viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
@@ -274,6 +433,56 @@ export function createPreviewer(
       } else {
         syncPages();
       }
+    };
+
+    const leaveTopLayer = (): void => {
+      if (fullscreenTopLayer === 'popover') {
+        try {
+          (hostEl as HTMLElement & { hidePopover?: () => void }).hidePopover?.();
+        } catch {
+          /* The popover may already have been dismissed by the browser. */
+        }
+        hostEl.removeAttribute('popover');
+        hostEl.classList.remove('bpp-popover-host');
+        fullscreenTopLayer = null;
+      } else if (fullscreenTopLayer === 'native' && ownerDoc.fullscreenElement === hostEl) {
+        void ownerDoc.exitFullscreen?.().catch(() => {});
+      }
+    };
+
+    const enterTopLayer = (): void => {
+      const popoverHost = hostEl as HTMLElement & { showPopover?: () => void };
+      if (typeof popoverHost.showPopover === 'function') {
+        try {
+          hostEl.classList.add('bpp-popover-host');
+          hostEl.setAttribute('popover', 'manual');
+          popoverHost.showPopover();
+          fullscreenTopLayer = 'popover';
+          return;
+        } catch {
+          hostEl.removeAttribute('popover');
+          hostEl.classList.remove('bpp-popover-host');
+        }
+      }
+
+      // Older browsers without Popover still get a true top-layer fullscreen
+      // experience. If that request is unavailable or denied, .bpp-fullscreen
+      // remains as the backwards-compatible fixed-position fallback.
+      if (typeof hostEl.requestFullscreen === 'function') {
+        fullscreenTopLayer = 'native';
+        void hostEl.requestFullscreen().catch(() => {
+          fullscreenTopLayer = null;
+        });
+      }
+    };
+
+    const setFullscreen = (expanded: boolean): void => {
+      applyFullscreenState(expanded);
+      if (expanded) enterTopLayer();
+      else leaveTopLayer();
+    };
+    exitFullscreenMode = () => {
+      if (isFullscreen) setFullscreen(false);
     };
 
     const setCurrentPage = (n: number): void => {
@@ -389,6 +598,19 @@ export function createPreviewer(
     // ── Download (lazy PDF) ──────────────────────────────────────────────────
     fullscreen?.addEventListener('click', () => setFullscreen(!isFullscreen), { signal });
     ownerDoc.addEventListener(
+      'fullscreenchange',
+      () => {
+        if (ownerDoc.fullscreenElement === hostEl) {
+          fullscreenTopLayer = 'native';
+          if (!isFullscreen) applyFullscreenState(true);
+        } else if (fullscreenTopLayer === 'native') {
+          fullscreenTopLayer = null;
+          if (isFullscreen) applyFullscreenState(false);
+        }
+      },
+      { signal },
+    );
+    ownerDoc.addEventListener(
       'keydown',
       event => {
         if (event.key === 'Escape' && isFullscreen) setFullscreen(false);
@@ -435,6 +657,7 @@ export function createPreviewer(
         ...pluginContext,
         pages,
         snapshot: loadOptions.snapshot,
+        report: loadOptions.report,
       };
       for (const plugin of plugins) {
         try {
@@ -529,6 +752,8 @@ export function createPreviewer(
 
   function dispose(): void {
     if (disposed) return;
+    exitFullscreenMode?.();
+    exitFullscreenMode = null;
     disposed = true;
     teardownPlugins();
     for (const cleanup of setupCleanups.splice(0)) {

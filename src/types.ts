@@ -209,12 +209,25 @@ export interface PreviewerPlugin {
   teardown?(): void;
 }
 
+/** Visibility state for the previewer's collapsible navigation panels. */
+export interface PreviewerViewState {
+  showThumbnails: boolean;
+  showInspector: boolean;
+}
+
 /** Configuration applied when a previewer is created (chrome / defaults). */
 export interface PreviewerOptions {
   /** Plugins extending the previewer (e.g. the structure view). Optional. */
   plugins?: PreviewerPlugin[];
   /** Show the thumbnail rail on first render. Defaults to `true`. */
   showThumbnails?: boolean;
+  /**
+   * Show the shared inspector region on first render. When omitted, inspector
+   * plugins retain their own `openByDefault` behaviour.
+   */
+  showInspector?: boolean;
+  /** Called whenever thumbnail or inspector visibility changes. */
+  onViewStateChange?: (state: PreviewerViewState) => void;
   /** Initial fit mode. Defaults to `'fit-page'`. */
   fitMode?: Exclude<FitMode, 'custom'>;
   /** Accessible label for the previewer region. Defaults to `'PDF preview'`. */

@@ -35,7 +35,22 @@ viewer.load(svgStringsToPages(pages), {
 <bonnie-pdf-previewer style="height: 80vh" label="Quarterly report"></bonnie-pdf-previewer>
 ```
 
-Attributes: `show-thumbnails` (`"false"` to hide), `fit-mode` (`fit-page` | `fit-width`), `download-filename`, `label`.
+Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector`
+(`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`),
+`download-filename`, and `label`.
+
+Set `preference-key` to persist thumbnail and inspector visibility in
+`localStorage`. The saved state is read synchronously before the shadow DOM is
+built, so returning visitors do not see the panels flash through their default
+state. Use the same key on multiple viewers to share the preference:
+
+```html
+<bonnie-pdf-previewer
+  structure-view
+  compliance-view
+  preference-key="my-app-pdf-viewer-layout"
+></bonnie-pdf-previewer>
+```
 
 ## Usage — factory (any framework / light DOM)
 
@@ -154,6 +169,7 @@ When more than one inspector plugin is registered (e.g. `structure-view` **and**
 `compliance-view`), they share **one** side panel with a tab strip — only one is
 visible at a time, and a single toolbar button toggles the panel. This keeps the
 Structure tree and the Accessibility report from competing for screen space.
+Tabs are ordered alphabetically by their displayed label.
 
 ```js
 el.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });

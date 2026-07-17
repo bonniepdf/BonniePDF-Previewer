@@ -1,7 +1,14 @@
 import { createPreviewer } from './controller';
 import { structureView } from './structure-view';
 import { complianceView } from './compliance-view';
-import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewerPlugin, PreviewPage } from './types';
+import type {
+  LoadOptions,
+  PreviewerHandle,
+  PreviewerOptions,
+  PreviewerPlugin,
+  PreviewerViewState,
+  PreviewPage,
+} from './types';
 
 /**
  * `<bonnie-pdf-previewer>` — a framework-agnostic PDF preview element.
@@ -18,7 +25,8 @@ import type { LoadOptions, PreviewerHandle, PreviewerOptions, PreviewerPlugin, P
  * ```
  *
  * Configuration is read from attributes: `show-thumbnails` (`"false"` to hide),
- * `fit-mode` (`fit-page` | `fit-width`), `download-filename`, and `label`.
+ * `show-inspector`, `preference-key`, `fit-mode` (`fit-page` | `fit-width`),
+ * `download-filename`, and `label`.
  *
  * The viewer renders inside a shadow root, so host-page CSS cannot reach the SVG
  * pages — the embedded fonts always win and there are no id collisions between
@@ -53,6 +61,9 @@ export class BonniePdfPreviewerElement extends HTMLElement {
 
   private readOptions(): PreviewerOptions {
     const showThumbs = this.getAttribute('show-thumbnails');
+    const showInspector = this.getAttribute('show-inspector');
+    const preferenceKey = this.getAttribute('preference-key');
+    const saved = preferenceKey ? this.readPreferences(preferenceKey) : undefined;
     // Plugins are opt-in via boolean attributes, so the default element is
     // byte-for-byte the previous component. `structure-view` adds the layout
     // tree; `compliance-view` adds the accessibility/compliance panel.
@@ -61,13 +72,37 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     if (this.hasAttribute('compliance-view')) plugins.push(complianceView());
     return {
       plugins: plugins.length > 0 ? plugins : undefined,
-      showThumbnails: showThumbs === null ? undefined : showThumbs !== 'false',
+      showThumbnails: saved?.showThumbnails ?? (showThumbs === null ? undefined : showThumbs !== 'false'),
+      showInspector: saved?.showInspector ?? (showInspector === null ? undefined : showInspector !== 'false'),
+      onViewStateChange: preferenceKey ? state => this.writePreferences(preferenceKey, state) : undefined,
       fitMode: this.getAttribute('fit-mode') === 'fit-width' ? 'fit-width' : 'fit-page',
       title: this.getAttribute('label') ?? undefined,
       downloadFilename: this.getAttribute('download-filename') ?? undefined,
       hideBorder: this.getAttribute('hide-border') === 'true',
       styleScrollbars: this.getAttribute('style-scrollbars') === 'true',
     };
+  }
+
+  private readPreferences(key: string): Partial<PreviewerViewState> | undefined {
+    try {
+      const value = this.ownerDocument.defaultView?.localStorage.getItem(key);
+      if (!value) return undefined;
+      const parsed = JSON.parse(value) as Partial<PreviewerViewState>;
+      return {
+        showThumbnails: typeof parsed.showThumbnails === 'boolean' ? parsed.showThumbnails : undefined,
+        showInspector: typeof parsed.showInspector === 'boolean' ? parsed.showInspector : undefined,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  private writePreferences(key: string, state: PreviewerViewState): void {
+    try {
+      this.ownerDocument.defaultView?.localStorage.setItem(key, JSON.stringify(state));
+    } catch {
+      // Storage can be unavailable (privacy mode, sandboxed frames, quotas).
+    }
   }
 }
 

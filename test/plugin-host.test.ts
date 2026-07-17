@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createPreviewer } from '../src/controller';
 import { structureView } from '../src/structure-view';
 import { complianceView } from '../src/compliance-view';
+import { BonniePdfPreviewerElement } from '../src/define';
 import type { LayoutSnapshot, PreviewPage, PreviewerPlugin } from '../src/types';
 
 function pageSvg(n: number, w = 200, h = 300): string {
@@ -201,6 +202,11 @@ describe('previewer plugin host', () => {
 
     const structurePanel = host.querySelector<HTMLElement>('[data-side-panel="structure"]')!;
     const compliancePanel = host.querySelector<HTMLElement>('[data-side-panel="compliance"]')!;
+    expect(Array.from(tabs).map(tab => tab.querySelector('.bpp-side-tab-label')?.textContent)).toEqual([
+      'Accessibility',
+      'Structure',
+    ]);
+
     // Structure registered first, so it wins the default-open race; compliance is a quiet tab.
     expect(structurePanel.hidden).toBe(false);
     expect(compliancePanel.hidden).toBe(true);
@@ -219,6 +225,57 @@ describe('previewer plugin host', () => {
 
     handle.dispose();
     host.remove();
+  });
+
+  it('honours initial panel visibility and reports user visibility changes', () => {
+    const states: Array<{ showThumbnails: boolean; showInspector: boolean }> = [];
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, {
+      plugins: [structureView(), complianceView()],
+      showThumbnails: false,
+      showInspector: false,
+      onViewStateChange: state => states.push(state),
+    });
+    handle.load(pages(1), { snapshot: snapshotFor2Pages() });
+
+    expect(host.querySelector<HTMLElement>('[data-thumbs]')!.hidden).toBe(true);
+    expect(host.querySelector<HTMLElement>('.bpp-side')!.hidden).toBe(true);
+
+    host.querySelector<HTMLButtonElement>('[data-toggle-thumbs]')!.click();
+    host.querySelector<HTMLButtonElement>('.bpp-side-toggle')!.click();
+    expect(states.at(-1)).toEqual({ showThumbnails: true, showInspector: true });
+
+    handle.dispose();
+    host.remove();
+  });
+
+  it('applies persisted visibility before building the custom-element shell', () => {
+    const tagName = 'bonnie-pdf-previewer-persistence-test';
+    if (!customElements.get(tagName)) {
+      customElements.define(tagName, class extends BonniePdfPreviewerElement {});
+    }
+    const key = 'bonniepdf-previewer-test-layout';
+    localStorage.setItem(key, JSON.stringify({ showThumbnails: false, showInspector: false }));
+
+    const element = document.createElement(tagName) as BonniePdfPreviewerElement;
+    element.setAttribute('show-thumbnails', 'true');
+    element.setAttribute('show-inspector', 'true');
+    element.setAttribute('structure-view', '');
+    element.setAttribute('compliance-view', '');
+    element.setAttribute('preference-key', key);
+    document.body.append(element);
+    element.load(pages(1), { snapshot: snapshotFor2Pages() });
+
+    expect(element.shadowRoot?.querySelector<HTMLElement>('[data-thumbs]')?.hidden).toBe(true);
+    expect(element.shadowRoot?.querySelector<HTMLElement>('.bpp-side')?.hidden).toBe(true);
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('[data-toggle-thumbs]')?.click();
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.bpp-side-toggle')?.click();
+    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ showThumbnails: true, showInspector: true });
+
+    element.remove();
+    localStorage.removeItem(key);
   });
 
   it('structure view shows an empty state when no snapshot is provided', () => {

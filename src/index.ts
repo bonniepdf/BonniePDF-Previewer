@@ -21,6 +21,7 @@ export type {
   PreviewerPluginContext,
   PreviewerLoadContext,
   PreviewerSyncContext,
+  PreviewerViewState,
   LayoutSnapshot,
   SnapshotNode,
   SnapshotRect,

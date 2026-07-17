@@ -19,7 +19,12 @@ export function namespaceSvgIds(svg: string, prefix: string): string {
 
 /** Builds the previewer chrome (stylesheet + toolbar + empty body + overlay) into
  * the given root. Page/thumbnail content is mounted later by the controller. */
-export function buildShell(root: ShadowRoot | HTMLElement, opts: Required<PreviewerOptions>): void {
+export function buildShell(
+  root: ShadowRoot | HTMLElement,
+  opts: Required<
+    Pick<PreviewerOptions, 'showThumbnails' | 'hideBorder' | 'styleScrollbars' | 'title' | 'fitMode'>
+  >,
+): void {
   const showThumbs = opts.showThumbnails;
   root.innerHTML = `
 <style>${STYLES}</style>

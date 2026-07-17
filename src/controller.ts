@@ -29,9 +29,11 @@ export function createPreviewer(
   container: ShadowRoot | HTMLElement,
   options: PreviewerOptions = {},
 ): PreviewerHandle {
-  const opts: Required<PreviewerOptions> = {
+  const opts = {
     plugins: options.plugins ?? [],
     showThumbnails: options.showThumbnails ?? true,
+    showInspector: options.showInspector,
+    onViewStateChange: options.onViewStateChange ?? (() => {}),
     fitMode: options.fitMode ?? 'fit-page',
     title: options.title ?? 'PDF preview',
     downloadFilename: options.downloadFilename ?? 'document.pdf',
@@ -69,6 +71,7 @@ export function createPreviewer(
   type Tone = 'error' | 'warning' | 'info' | 'ok';
   interface RegisteredPanel {
     id: string;
+    label: string;
     element: HTMLElement;
     tabBtn: HTMLButtonElement;
     badgeEl: HTMLElement;
@@ -83,6 +86,11 @@ export function createPreviewer(
   let sideBody: HTMLElement | null = null;
   let inspectorToggle: HTMLButtonElement | null = null;
   let inspectorDot: HTMLElement | null = null;
+  let showThumbnails = opts.showThumbnails;
+
+  function notifyViewState(): void {
+    opts.onViewStateChange({ showThumbnails, showInspector: regionVisible });
+  }
 
   const TONE_RANK: Record<Tone, number> = { error: 3, warning: 2, info: 1, ok: 0 };
 
@@ -110,6 +118,7 @@ export function createPreviewer(
     if (sideAside) sideAside.hidden = false;
     inspectorToggle?.setAttribute('aria-pressed', 'true');
     inspectorToggle?.classList.add('bpp-btn-active');
+    notifyViewState();
   }
 
   function hideRegion(): void {
@@ -118,6 +127,7 @@ export function createPreviewer(
     inspectorToggle?.setAttribute('aria-pressed', 'false');
     inspectorToggle?.classList.remove('bpp-btn-active');
     sidePanels.find(p => p.id === activePanelId)?.onVisibilityChange?.(false);
+    notifyViewState();
   }
 
   function activatePanel(id: string | null): void {
@@ -199,17 +209,18 @@ export function createPreviewer(
       badgeEl.hidden = true;
       tabBtn.append(labelSpan, badgeEl);
       tabBtn.addEventListener('click', () => activatePanel(id));
-      sideTabs!.append(tabBtn);
-
       element.dataset.sidePanel = id;
       element.hidden = true;
       sideBody!.append(element);
 
-      const panel: RegisteredPanel = { id, element, tabBtn, badgeEl, onVisibilityChange, badgeTone: null };
+      const panel: RegisteredPanel = { id, label, element, tabBtn, badgeEl, onVisibilityChange, badgeTone: null };
       sidePanels.push(panel);
+      sidePanels.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+      sideTabs!.replaceChildren(...sidePanels.map(p => p.tabBtn));
       updateTabStripVisibility();
       // The first panel that asks to open wins; later panels become quiet tabs.
-      if (defaultOpen && !regionVisible && activePanelId === null) activatePanel(id);
+      const shouldOpen = opts.showInspector ?? defaultOpen;
+      if (shouldOpen && !regionVisible && activePanelId === null) activatePanel(id);
 
       return {
         setVisible(visible: boolean) {
@@ -326,7 +337,6 @@ export function createPreviewer(
     observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN);
 
     // ── Viewer state ─────────────────────────────────────────────────────────
-    let showThumbnails = opts.showThumbnails;
     let fitMode: 'fit-page' | 'fit-width' | 'custom' = opts.fitMode;
     let customScale = 1;
     let currentPage = 1;
@@ -540,6 +550,7 @@ export function createPreviewer(
         showThumbnails = !showThumbnails;
         if (thumbsNav) thumbsNav.hidden = !showThumbnails;
         syncPages();
+        notifyViewState();
       },
       { signal },
     );

@@ -80,12 +80,14 @@ export function buildShell(
         ${icon('minimize', 'bpp-icon bpp-icon-fullscreen-close')}
       </button>
     </div>
-    <div class="bpp-group bpp-group-end" role="group" aria-label="Download">
+    <div class="bpp-sep" role="separator" aria-hidden="true"></div>
+    <div class="bpp-group" role="group" aria-label="Download">
       <button type="button" class="bpp-btn bpp-btn-download" data-download aria-label="Download PDF" title="Download PDF" disabled>
         ${icon('download')}
         <span class="bpp-btn-label">Download PDF</span>
       </button>
     </div>
+    <div class="bpp-group bpp-group-end" role="group" aria-label="Inspector" data-toolbar-end></div>
   </div>
   <div class="bpp-body">
     <nav class="bpp-thumbs" aria-label="Page thumbnails" data-thumbs${showThumbs ? '' : ' hidden'}>

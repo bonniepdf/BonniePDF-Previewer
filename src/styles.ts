@@ -224,6 +224,39 @@ export const STYLES = /* css */ `
   font-size: 0.8125rem; color: var(--_text-2);
 }
 .bpp-side[hidden] { display: none; }
+
+/* Splitter between the document area and the inspector panel. A 7px hit area
+   that straddles the panel's left seam via negative margins, so it adds no
+   layout width. The visible accent line only appears on hover/focus/drag; at
+   rest the panel's own border-left is the divider. */
+.bpp-side-resizer {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 7px;
+  margin-left: -4px;
+  margin-right: -3px;
+  position: relative;
+  z-index: 3;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+}
+.bpp-side-resizer[hidden] { display: none; }
+.bpp-side-resizer::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--_brand);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.bpp-side-resizer:hover::before,
+.bpp-side-resizer:focus-visible::before,
+.bpp-side-resizer-active::before { opacity: 1; }
+.bpp-side-resizer:focus-visible { outline: none; }
+
 /* Tab strip: one tab per registered panel; hidden when there's only one. */
 .bpp-side-tabs {
   display: flex; flex-shrink: 0; gap: 2px; padding: 6px 6px 0;
@@ -358,6 +391,7 @@ export const STYLES = /* css */ `
 .bpp-cv-detail-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
 .bpp-cv-detail-head { display: flex; align-items: center; gap: 6px; padding: 0 12px 6px; }
 .bpp-cv-detail-type { font-weight: 700; color: var(--_text-1); font-size: 0.8125rem; }
+.bpp-cv-geom { margin: 0 12px 4px; font-size: 0.75rem; color: var(--_text-3); font-variant-numeric: tabular-nums; }
 .bpp-cv-attr { margin: 0 12px; font-size: 0.75rem; color: var(--_text-2); font-style: italic; }
 .bpp-cv-empty { padding: 4px 12px; font-size: 0.75rem; color: var(--_text-3); }
 

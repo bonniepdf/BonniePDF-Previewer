@@ -17,6 +17,13 @@ const MAX_SCALE = 5;
 const PAGE_MOUNT_MARGIN = '1500px 0px';
 const THUMB_MOUNT_MARGIN = '800px 0px';
 
+// Inspector panel resize bounds. The panel is clamped between a hard minimum and
+// maximum, and additionally never allowed to squeeze the document area below
+// SIDE_DOC_MIN — whichever constraint is tighter wins.
+const SIDE_MIN_WIDTH = 200;
+const SIDE_MAX_WIDTH = 640;
+const SIDE_DOC_MIN = 320;
+
 const clamp = (s: number) => Math.min(Math.max(s, MIN_SCALE), MAX_SCALE);
 
 /**
@@ -82,6 +89,7 @@ export function createPreviewer(
   let activePanelId: string | null = null;
   let regionVisible = false;
   let sideAside: HTMLElement | null = null;
+  let sideResizer: HTMLElement | null = null;
   let sideTabs: HTMLElement | null = null;
   let sideBody: HTMLElement | null = null;
   let inspectorToggle: HTMLButtonElement | null = null;
@@ -116,6 +124,7 @@ export function createPreviewer(
   function showRegion(): void {
     regionVisible = true;
     if (sideAside) sideAside.hidden = false;
+    if (sideResizer) sideResizer.hidden = false;
     inspectorToggle?.setAttribute('aria-pressed', 'true');
     inspectorToggle?.classList.add('bpp-btn-active');
     notifyViewState();
@@ -124,6 +133,7 @@ export function createPreviewer(
   function hideRegion(): void {
     regionVisible = false;
     if (sideAside) sideAside.hidden = true;
+    if (sideResizer) sideResizer.hidden = true;
     inspectorToggle?.setAttribute('aria-pressed', 'false');
     inspectorToggle?.classList.remove('bpp-btn-active');
     sidePanels.find(p => p.id === activePanelId)?.onVisibilityChange?.(false);
@@ -155,6 +165,68 @@ export function createPreviewer(
     next.onVisibilityChange?.(true);
   }
 
+  /** Clamps a requested panel width to the configured bounds and the room the
+   * document area needs, so neither side can be dragged away entirely. */
+  function clampSideWidth(px: number): number {
+    const bodyWidth = q<HTMLElement>('.bpp-body')?.clientWidth ?? 0;
+    const maxByContainer = bodyWidth > 0 ? bodyWidth - SIDE_DOC_MIN : SIDE_MAX_WIDTH;
+    const max = Math.max(SIDE_MIN_WIDTH, Math.min(SIDE_MAX_WIDTH, maxByContainer));
+    return Math.min(Math.max(px, SIDE_MIN_WIDTH), max);
+  }
+
+  function setSideWidth(px: number): void {
+    if (!sideAside) return;
+    const w = clampSideWidth(px);
+    sideAside.style.width = `${w}px`;
+    sideResizer?.setAttribute('aria-valuenow', String(Math.round(w)));
+  }
+
+  function setupSideResizer(handle: HTMLElement): void {
+    let dragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    handle.addEventListener('pointerdown', (event: PointerEvent) => {
+      if (!sideAside) return;
+      dragging = true;
+      startX = event.clientX;
+      startWidth = sideAside.getBoundingClientRect().width;
+      handle.setPointerCapture(event.pointerId);
+      handle.classList.add('bpp-side-resizer-active');
+      event.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', (event: PointerEvent) => {
+      if (!dragging) return;
+      // The panel is docked on the right, so dragging left (a negative delta)
+      // widens it and dragging right narrows it.
+      setSideWidth(startWidth + (startX - event.clientX));
+    });
+
+    const endDrag = (event: PointerEvent): void => {
+      if (!dragging) return;
+      dragging = false;
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+      handle.classList.remove('bpp-side-resizer-active');
+    };
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+
+    // Keyboard resizing for the separator (arrow keys nudge; Shift for a larger step).
+    handle.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (!sideAside) return;
+      const step = event.shiftKey ? 48 : 16;
+      const current = sideAside.getBoundingClientRect().width;
+      if (event.key === 'ArrowLeft') {
+        setSideWidth(current + step);
+        event.preventDefault();
+      } else if (event.key === 'ArrowRight') {
+        setSideWidth(current - step);
+        event.preventDefault();
+      }
+    });
+  }
+
   function ensureSideChrome(): void {
     if (sideAside) return;
     sideAside = ownerDoc.createElement('aside');
@@ -168,7 +240,21 @@ export function createPreviewer(
     sideBody = ownerDoc.createElement('div');
     sideBody.className = 'bpp-side-body';
     sideAside.append(sideTabs, sideBody);
-    q<HTMLElement>('.bpp-body')?.append(sideAside);
+
+    // Draggable splitter between the document scroll area and the inspector. It
+    // straddles the panel's left border (via negative margins in CSS) and is
+    // hidden whenever the region is collapsed.
+    sideResizer = ownerDoc.createElement('div');
+    sideResizer.className = 'bpp-side-resizer';
+    sideResizer.hidden = true;
+    sideResizer.setAttribute('role', 'separator');
+    sideResizer.setAttribute('aria-orientation', 'vertical');
+    sideResizer.setAttribute('aria-label', 'Resize inspector panel');
+    sideResizer.setAttribute('aria-valuemin', String(SIDE_MIN_WIDTH));
+    sideResizer.tabIndex = 0;
+    setupSideResizer(sideResizer);
+
+    q<HTMLElement>('.bpp-body')?.append(sideResizer, sideAside);
 
     inspectorToggle = ownerDoc.createElement('button');
     inspectorToggle.type = 'button';

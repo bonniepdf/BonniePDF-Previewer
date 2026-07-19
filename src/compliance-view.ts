@@ -191,13 +191,18 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     return node;
   }
 
-  /** Formats a node's first-rect size, matching the structure view. */
-  function formatSize(node: SnapshotNode): string {
+  /**
+   * Describes where an element sits and how big it is, for the detail pane.
+   * Unlike the structure view, compliance rows stay geometry-free — severity and
+   * role are what the tree is for — so this is the one place size appears.
+   */
+  function describeGeometry(node: SnapshotNode): string {
     const r = node.rects[0];
     if (!r) return '';
-    let s = `${Math.round(r.width)}×${Math.round(r.height)}`;
-    if (node.rects.length > 1) s += ` · ${node.rects.length}p`;
-    return s;
+    const pages = [...new Set(node.rects.map(rect => rect.page))].sort((a, b) => a - b);
+    const pageText =
+      pages.length === 1 ? `Page ${pages[0] + 1}` : `Pages ${pages[0] + 1}–${pages[pages.length - 1] + 1}`;
+    return `${pageText} · ${Math.round(r.width)}×${Math.round(r.height)} pt`;
   }
 
   function buildTree(nodes: SnapshotNode[]): HTMLElement {
@@ -238,13 +243,6 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
 
       row.append(el('span', 'bpp-tree-type', node.type));
       if (node.name) row.append(el('span', 'bpp-tree-name', node.name));
-
-      const sizeText = formatSize(node);
-      if (sizeText) {
-        const size = el('span', 'bpp-tree-size', sizeText);
-        size.title = 'width × height in points';
-        row.append(size);
-      }
 
       row.addEventListener('click', () => select(node));
       row.addEventListener('mouseenter', () => {
@@ -343,6 +341,9 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     heading.append(el('span', 'bpp-cv-detail-type', node.type));
     if (node.a11y?.role) heading.append(el('span', `bpp-cv-role bpp-cv-role-${chipKind(node.a11y.role)}`, node.a11y.role));
     detailEl.append(heading);
+
+    const geometry = describeGeometry(node);
+    if (geometry) detailEl.append(el('p', 'bpp-cv-geom', geometry));
 
     if (node.a11y?.alt) detailEl.append(el('p', 'bpp-cv-attr', `Alt: “${node.a11y.alt}”`));
 

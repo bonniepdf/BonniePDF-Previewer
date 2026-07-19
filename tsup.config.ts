@@ -11,7 +11,6 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   platform: 'browser',
   target: 'es2022',
-  dts: true,
   splitting: true,
   treeshake: true,
   minify: true,

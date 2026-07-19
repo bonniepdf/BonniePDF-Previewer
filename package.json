@@ -28,7 +28,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --outDir dist",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm run build",
@@ -47,7 +47,7 @@
   "devDependencies": {
     "jsdom": "^29.1.1",
     "tsup": "^8.5.1",
-    "typescript": "^6.0.3",
+    "typescript": "7.0.2",
     "vitest": "^4.1.10"
   }
 }

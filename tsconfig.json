@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "moduleResolution": "bundler",
     "strict": true,
@@ -9,8 +10,7 @@
     "noEmit": true,
     "declaration": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "ignoreDeprecations": "6.0"
+    "verbatimModuleSyntax": true
   },
   "include": ["src/**/*"]
 }

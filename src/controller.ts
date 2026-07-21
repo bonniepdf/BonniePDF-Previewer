@@ -8,6 +8,7 @@ import type {
   PreviewerPluginContext,
   PreviewerLoadContext,
   PreviewPage,
+  PreviewerZoomState,
 } from './types';
 
 const PAGE_PAD = 24;
@@ -40,6 +41,7 @@ export function createPreviewer(
     plugins: options.plugins ?? [],
     showThumbnails: options.showThumbnails ?? true,
     showInspector: options.showInspector,
+    initialZoom: options.initialZoom,
     onViewStateChange: options.onViewStateChange ?? (() => {}),
     fitMode: options.fitMode ?? 'fit-page',
     title: options.title ?? 'PDF preview',
@@ -95,9 +97,17 @@ export function createPreviewer(
   let inspectorToggle: HTMLButtonElement | null = null;
   let inspectorDot: HTMLElement | null = null;
   let showThumbnails = opts.showThumbnails;
+  let viewZoom: PreviewerZoomState =
+    opts.initialZoom?.mode === 'custom'
+      ? { mode: 'custom', scale: clamp(opts.initialZoom.scale ?? 1) }
+      : { mode: opts.initialZoom?.mode ?? opts.fitMode };
 
   function notifyViewState(): void {
-    opts.onViewStateChange({ showThumbnails, showInspector: regionVisible });
+    opts.onViewStateChange({
+      showThumbnails,
+      showInspector: regionVisible,
+      zoom: { ...viewZoom },
+    });
   }
 
   const TONE_RANK: Record<Tone, number> = { error: 3, warning: 2, info: 1, ok: 0 };
@@ -423,8 +433,8 @@ export function createPreviewer(
     observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN);
 
     // ── Viewer state ─────────────────────────────────────────────────────────
-    let fitMode: 'fit-page' | 'fit-width' | 'custom' = opts.fitMode;
-    let customScale = 1;
+    let fitMode: 'fit-page' | 'fit-width' | 'custom' = viewZoom.mode;
+    let customScale = viewZoom.mode === 'custom' ? clamp(viewZoom.scale ?? 1) : 1;
     let currentPage = 1;
     let viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
     const totalPages = pages.length;
@@ -444,6 +454,7 @@ export function createPreviewer(
     const fullscreen = q<HTMLButtonElement>('[data-fullscreen]');
     const download = q<HTMLButtonElement>('[data-download]');
     let isFullscreen = shell?.classList.contains('bpp-fullscreen') ?? false;
+    let zoomBeforeFullscreen: PreviewerZoomState | null = null;
 
     const effectiveScale = (): number => {
       if (fitMode === 'custom') return customScale;
@@ -504,6 +515,14 @@ export function createPreviewer(
       }
     };
 
+    const rememberUserZoom = (): void => {
+      viewZoom = fitMode === 'custom' ? { mode: fitMode, scale: customScale } : { mode: fitMode };
+      // A choice made while fullscreen is intentional and should survive exit,
+      // rather than being replaced by the pre-fullscreen zoom.
+      if (isFullscreen) zoomBeforeFullscreen = null;
+      notifyViewState();
+    };
+
     type FullscreenTopLayer = 'popover' | 'native' | null;
     const hostPopoverIsOpen = (): boolean => {
       try {
@@ -516,6 +535,15 @@ export function createPreviewer(
       ownerDoc.fullscreenElement === hostEl ? 'native' : hostPopoverIsOpen() ? 'popover' : null;
 
     const applyFullscreenState = (expanded: boolean): void => {
+      if (expanded === isFullscreen) return;
+      if (expanded) {
+        zoomBeforeFullscreen = fitMode === 'custom' ? { mode: fitMode, scale: customScale } : { mode: fitMode };
+        fitMode = 'fit-page';
+      } else if (zoomBeforeFullscreen) {
+        fitMode = zoomBeforeFullscreen.mode;
+        if (zoomBeforeFullscreen.mode === 'custom') customScale = clamp(zoomBeforeFullscreen.scale ?? 1);
+        zoomBeforeFullscreen = null;
+      }
       isFullscreen = expanded;
       shell?.classList.toggle('bpp-fullscreen', isFullscreen);
       viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
@@ -666,6 +694,7 @@ export function createPreviewer(
         customScale = clamp(effectiveScale() / ZOOM_STEP);
         fitMode = 'custom';
         syncPages();
+        rememberUserZoom();
       },
       { signal },
     );
@@ -675,6 +704,7 @@ export function createPreviewer(
         customScale = clamp(effectiveScale() * ZOOM_STEP);
         fitMode = 'custom';
         syncPages();
+        rememberUserZoom();
       },
       { signal },
     );
@@ -688,6 +718,7 @@ export function createPreviewer(
           fitMode = 'custom';
         }
         syncPages();
+        rememberUserZoom();
       },
       { signal },
     );

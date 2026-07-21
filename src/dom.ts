@@ -78,6 +78,7 @@ export function buildShell(
       <button type="button" class="bpp-btn" data-fullscreen aria-label="Full screen" aria-pressed="false" title="Full screen">
         ${icon('maximize', 'bpp-icon bpp-icon-fullscreen-open')}
         ${icon('minimize', 'bpp-icon bpp-icon-fullscreen-close')}
+        <span class="bpp-fullscreen-label">Exit Fullscreen</span>
       </button>
     </div>
     <div class="bpp-sep" role="separator" aria-hidden="true"></div>

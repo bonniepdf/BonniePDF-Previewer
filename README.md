@@ -39,7 +39,8 @@ Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector`
 (`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`),
 `download-filename`, and `label`.
 
-Set `preference-key` to persist thumbnail and inspector visibility in
+Set `preference-key` to persist thumbnail and inspector visibility plus the
+selected zoom (Fit page, Fit width, or a percentage) in
 `localStorage`. The saved state is read synchronously before the shadow DOM is
 built, so returning visitors do not see the panels flash through their default
 state. Use the same key on multiple viewers to share the preference:
@@ -51,6 +52,11 @@ state. Use the same key on multiple viewers to share the preference:
   preference-key="my-app-pdf-viewer-layout"
 ></bonnie-pdf-previewer>
 ```
+
+Entering fullscreen temporarily switches the document to Fit page so it remains
+comfortably sized on large monitors. Leaving fullscreen restores the previous
+zoom unless the user selected a different zoom while fullscreen. The control
+also expands to show “Exit Fullscreen” while active.
 
 ## Usage — factory (any framework / light DOM)
 

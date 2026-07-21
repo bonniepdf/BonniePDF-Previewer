@@ -141,6 +141,8 @@ export const STYLES = /* css */ `
 .bpp-btn:not(.bpp-btn-active) .bpp-icon-thumbs-open { display: none; }
 .bpp-fullscreen .bpp-icon-fullscreen-open,
 .bpp:not(.bpp-fullscreen) .bpp-icon-fullscreen-close { display: none; }
+.bpp-fullscreen-label { display: none; white-space: nowrap; }
+.bpp-fullscreen .bpp-fullscreen-label { display: inline; }
 .bpp-sep { width: 1px; height: 20px; margin: 0 6px; background: var(--_divider); flex-shrink: 0; }
 .bpp-pages-label {
   display: flex; align-items: center; gap: 4px; min-width: 56px; justify-content: center;

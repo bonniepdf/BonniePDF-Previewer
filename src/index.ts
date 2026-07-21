@@ -14,6 +14,7 @@ export type { ComplianceViewOptions } from './compliance-view';
 export type {
   PreviewPage,
   FitMode,
+  PreviewerZoomState,
   PreviewerOptions,
   LoadOptions,
   PreviewerHandle,

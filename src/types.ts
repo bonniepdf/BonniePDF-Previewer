@@ -25,6 +25,13 @@ export interface PreviewPage {
 /** How the previewer fits pages into the available viewport space. */
 export type FitMode = 'fit-page' | 'fit-width' | 'custom';
 
+/** A semantic fit mode or an explicit scale selected by the user. */
+export interface PreviewerZoomState {
+  mode: FitMode;
+  /** Scale factor used when `mode` is `custom` (1 = 100%). */
+  scale?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Layout snapshot (structural mirror of @bonniepdf/core's LayoutSnapshot).
 //
@@ -213,6 +220,7 @@ export interface PreviewerPlugin {
 export interface PreviewerViewState {
   showThumbnails: boolean;
   showInspector: boolean;
+  zoom: PreviewerZoomState;
 }
 
 /** Configuration applied when a previewer is created (chrome / defaults). */
@@ -226,7 +234,9 @@ export interface PreviewerOptions {
    * plugins retain their own `openByDefault` behaviour.
    */
   showInspector?: boolean;
-  /** Called whenever thumbnail or inspector visibility changes. */
+  /** Restores a previously selected zoom. `fitMode` remains the fallback. */
+  initialZoom?: PreviewerZoomState;
+  /** Called whenever panel visibility or the user-selected zoom changes. */
   onViewStateChange?: (state: PreviewerViewState) => void;
   /** Initial fit mode. Defaults to `'fit-page'`. */
   fitMode?: Exclude<FitMode, 'custom'>;

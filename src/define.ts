@@ -74,6 +74,7 @@ export class BonniePdfPreviewerElement extends HTMLElement {
       plugins: plugins.length > 0 ? plugins : undefined,
       showThumbnails: saved?.showThumbnails ?? (showThumbs === null ? undefined : showThumbs !== 'false'),
       showInspector: saved?.showInspector ?? (showInspector === null ? undefined : showInspector !== 'false'),
+      initialZoom: saved?.zoom,
       onViewStateChange: preferenceKey ? state => this.writePreferences(preferenceKey, state) : undefined,
       fitMode: this.getAttribute('fit-mode') === 'fit-width' ? 'fit-width' : 'fit-page',
       title: this.getAttribute('label') ?? undefined,
@@ -91,10 +92,28 @@ export class BonniePdfPreviewerElement extends HTMLElement {
       return {
         showThumbnails: typeof parsed.showThumbnails === 'boolean' ? parsed.showThumbnails : undefined,
         showInspector: typeof parsed.showInspector === 'boolean' ? parsed.showInspector : undefined,
+        zoom: this.readZoomPreference(parsed.zoom),
       };
     } catch {
       return undefined;
     }
+  }
+
+  private readZoomPreference(value: unknown): PreviewerViewState['zoom'] | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const candidate = value as { mode?: unknown; scale?: unknown };
+    if (candidate.mode === 'fit-page' || candidate.mode === 'fit-width') {
+      return { mode: candidate.mode };
+    }
+    if (
+      candidate.mode === 'custom' &&
+      typeof candidate.scale === 'number' &&
+      Number.isFinite(candidate.scale) &&
+      candidate.scale > 0
+    ) {
+      return { mode: 'custom', scale: candidate.scale };
+    }
+    return undefined;
   }
 
   private writePreferences(key: string, state: PreviewerViewState): void {

@@ -67,15 +67,19 @@ describe('previewer plugin host', () => {
       hidePopover: { configurable: true, value: hidePopover },
     });
     document.body.append(host);
-    const handle = createPreviewer(host, {});
+    const handle = createPreviewer(host, { fitMode: 'fit-width' });
     handle.load(pages(1));
 
     const shell = host.querySelector('.bpp');
     const fullscreen = host.querySelector('[data-fullscreen]') as HTMLButtonElement;
+    const zoom = host.querySelector('[data-zoom-select]') as HTMLSelectElement;
+    const fullscreenLabel = host.querySelector('.bpp-fullscreen-label') as HTMLElement;
 
     expect(fullscreen).toBeTruthy();
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
+    expect(zoom.value).toBe('fit-width');
+    expect(fullscreenLabel.textContent).toBe('Exit Fullscreen');
 
     fullscreen.click();
     expect(showPopover).toHaveBeenCalledOnce();
@@ -84,6 +88,7 @@ describe('previewer plugin host', () => {
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(true);
     expect(fullscreen.getAttribute('aria-pressed')).toBe('true');
     expect(fullscreen.getAttribute('aria-label')).toBe('Exit full screen');
+    expect(zoom.value).toBe('fit-page');
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(hidePopover).toHaveBeenCalledOnce();
@@ -91,6 +96,14 @@ describe('previewer plugin host', () => {
     expect(host.classList.contains('bpp-popover-host')).toBe(false);
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
+    expect(zoom.value).toBe('fit-width');
+
+    // A deliberate zoom choice made in fullscreen survives exit.
+    fullscreen.click();
+    zoom.value = '1.25';
+    zoom.dispatchEvent(new Event('change'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(zoom.value).toBe('custom');
 
     handle.dispose();
     host.remove();
@@ -228,7 +241,11 @@ describe('previewer plugin host', () => {
   });
 
   it('honours initial panel visibility and reports user visibility changes', () => {
-    const states: Array<{ showThumbnails: boolean; showInspector: boolean }> = [];
+    const states: Array<{
+      showThumbnails: boolean;
+      showInspector: boolean;
+      zoom: { mode: 'fit-page' | 'fit-width' | 'custom'; scale?: number };
+    }> = [];
     const host = document.createElement('div');
     document.body.append(host);
     const handle = createPreviewer(host, {
@@ -244,7 +261,11 @@ describe('previewer plugin host', () => {
 
     host.querySelector<HTMLButtonElement>('[data-toggle-thumbs]')!.click();
     host.querySelector<HTMLButtonElement>('.bpp-side-toggle')!.click();
-    expect(states.at(-1)).toEqual({ showThumbnails: true, showInspector: true });
+    expect(states.at(-1)).toEqual({
+      showThumbnails: true,
+      showInspector: true,
+      zoom: { mode: 'fit-page' },
+    });
 
     handle.dispose();
     host.remove();
@@ -256,7 +277,14 @@ describe('previewer plugin host', () => {
       customElements.define(tagName, class extends BonniePdfPreviewerElement {});
     }
     const key = 'bonniepdf-previewer-test-layout';
-    localStorage.setItem(key, JSON.stringify({ showThumbnails: false, showInspector: false }));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        showThumbnails: false,
+        showInspector: false,
+        zoom: { mode: 'custom', scale: 1.25 },
+      }),
+    );
 
     const element = document.createElement(tagName) as BonniePdfPreviewerElement;
     element.setAttribute('show-thumbnails', 'true');
@@ -269,10 +297,26 @@ describe('previewer plugin host', () => {
 
     expect(element.shadowRoot?.querySelector<HTMLElement>('[data-thumbs]')?.hidden).toBe(true);
     expect(element.shadowRoot?.querySelector<HTMLElement>('.bpp-side')?.hidden).toBe(true);
+    expect(element.shadowRoot?.querySelector<HTMLSelectElement>('[data-zoom-select]')?.value).toBe('custom');
 
     element.shadowRoot?.querySelector<HTMLButtonElement>('[data-toggle-thumbs]')?.click();
     element.shadowRoot?.querySelector<HTMLButtonElement>('.bpp-side-toggle')?.click();
-    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ showThumbnails: true, showInspector: true });
+    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({
+      showThumbnails: true,
+      showInspector: true,
+      zoom: { mode: 'custom', scale: 1.25 },
+    });
+
+    const zoom = element.shadowRoot?.querySelector<HTMLSelectElement>('[data-zoom-select]');
+    if (zoom) {
+      zoom.value = 'fit-width';
+      zoom.dispatchEvent(new Event('change'));
+    }
+    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({
+      showThumbnails: true,
+      showInspector: true,
+      zoom: { mode: 'fit-width' },
+    });
 
     element.remove();
     localStorage.removeItem(key);

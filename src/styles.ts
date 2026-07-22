@@ -151,9 +151,16 @@ export const STYLES = /* css */ `
 .bpp-page-current { font-weight: 600; color: var(--_text-1); }
 .bpp-page-sep, .bpp-page-total { color: var(--_text-3); }
 .bpp-zoom {
-  height: 32px; min-width: 96px; padding: 0 8px;
+  appearance: none; -webkit-appearance: none;
+  height: 32px; min-width: 96px; padding: 0 28px 0 8px;
   border: 1px solid var(--_divider); border-radius: var(--_radius-sm);
-  background: var(--_bg); color: var(--_text-1); font: inherit; font-size: 0.8125rem; cursor: pointer;
+  background-color: var(--_bg);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 17px) 50%, calc(100% - 13px) 50%;
+  background-size: 4px 4px; background-repeat: no-repeat;
+  color: var(--_text-1); font: inherit; font-size: 0.8125rem; cursor: pointer;
 }
 .bpp-zoom:hover { border-color: var(--_text-3); }
 

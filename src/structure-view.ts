@@ -94,6 +94,22 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
     if (first) ctx.scrollToPage(first.page + 1);
   }
 
+  function emitSelection(node: SnapshotNode, sourceNavigation: boolean, origin: 'page' | 'tree'): void {
+    if (!ctx) return;
+    ctx.hostElement.dispatchEvent(
+      new CustomEvent('bonniepdf-node-select', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          nodeId: node.id,
+          sourceId: node.sourceId,
+          sourceNavigation,
+          origin,
+        },
+      }),
+    );
+  }
+
   /** Formats a node's size for the tree row: first rect's w×h in points,
    * with a page-count suffix when the node spans multiple pages. */
   function formatSize(node: SnapshotNode): string {
@@ -163,7 +179,10 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
         row.append(size);
       }
 
-      row.addEventListener('click', () => select(node));
+      row.addEventListener('click', event => {
+        select(node);
+        emitSelection(node, event.ctrlKey || event.metaKey, 'tree');
+      });
       row.addEventListener('mouseenter', () => {
         if (selectedId !== node.id) paint(node, true);
       });
@@ -253,14 +272,17 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
         pageEl.addEventListener(
           'click',
           event => {
-            if (!visible || !ctx) return;
+            if ((!visible && !event.ctrlKey && !event.metaKey) || !ctx) return;
             const scale = ctx.scale();
             if (scale <= 0) return;
             const bounds = pageEl.getBoundingClientRect();
             const x = (event.clientX - bounds.left) / scale;
             const y = (event.clientY - bounds.top) / scale;
             const node = hitTest(pageIndex, x, y);
-            if (node) select(node, /* revealRow */ true);
+            if (node) {
+              select(node, /* revealRow */ true);
+              emitSelection(node, event.ctrlKey || event.metaKey, 'page');
+            }
           },
           { signal: clickAbort.signal },
         );
@@ -269,6 +291,14 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
     sync({ scale }) {
       for (const h of highlights) position(h.element, h.rect, scale);
+    },
+
+    selectSnapshotNode(nodeId) {
+      if (!rootNode) return false;
+      const node = findNode(rootNode, nodeId);
+      if (!node) return false;
+      select(node, /* revealRow */ true);
+      return true;
     },
 
     teardown() {
@@ -280,4 +310,13 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
       clickAbort = null;
     },
   };
+}
+
+function findNode(root: SnapshotNode, nodeId: string): SnapshotNode | null {
+  if (root.id === nodeId) return root;
+  for (const child of root.children) {
+    const found = findNode(child, nodeId);
+    if (found) return found;
+  }
+  return null;
 }

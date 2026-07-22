@@ -76,6 +76,8 @@ export interface SnapshotNode {
   id: string;
   type: string;
   name?: string;
+  /** Opaque source id supplied by an instrumented editor preview build. */
+  sourceId?: string;
   rects: SnapshotRect[];
   /** Intrinsic accessibility facts, when the element declares a role. */
   a11y?: NodeAccessibility;
@@ -141,6 +143,8 @@ export interface ComplianceReport {
 export interface PreviewerPluginContext {
   /** The owning document, for creating elements. */
   readonly ownerDocument: Document;
+  /** Host element used for composed integration events. */
+  readonly hostElement: HTMLElement;
   /** Adds a control to the toolbar's trailing group. */
   addToolbarItem(element: HTMLElement): void;
   /**
@@ -213,6 +217,8 @@ export interface PreviewerPlugin {
   setup?(ctx: PreviewerPluginContext): void | (() => void);
   load?(ctx: PreviewerLoadContext): void;
   sync?(ctx: PreviewerSyncContext): void;
+  /** Selects a snapshot node when the plugin owns node-selection UI. */
+  selectSnapshotNode?(nodeId: string): boolean;
   teardown?(): void;
 }
 
@@ -289,6 +295,8 @@ export interface LoadOptions {
 export interface PreviewerHandle {
   /** Replaces the previewed document with the given pages. */
   load(pages: PreviewPage[], options?: LoadOptions): void;
+  /** Selects and reveals a layout-snapshot node. */
+  selectSnapshotNode(nodeId: string): boolean;
   /** Disconnects observers and listeners. Safe to call more than once. */
   dispose(): void;
 }

@@ -286,6 +286,7 @@ export function createPreviewer(
 
   const pluginContext: PreviewerPluginContext = {
     ownerDocument: ownerDoc,
+    hostElement: hostEl,
     addToolbarItem(element) {
       const slot = q<HTMLElement>('[data-toolbar-end]') ?? q<HTMLElement>('.bpp-toolbar');
       slot?.append(element);
@@ -811,6 +812,19 @@ export function createPreviewer(
     curOverlays = [];
   }
 
+  function selectSnapshotNode(nodeId: string): boolean {
+    if (disposed) return false;
+    let selected = false;
+    for (const plugin of plugins) {
+      try {
+        if (plugin.selectSnapshotNode?.(nodeId)) selected = true;
+      } catch (err) {
+        console.error(`[bonniepdf-previewer] plugin "${plugin.name}" selection failed`, err);
+      }
+    }
+    return selected;
+  }
+
   /** Windowed lazy mount/unmount with per-index memoisation of namespaced markup. */
   function observeLazyMount(
     items: HTMLElement[],
@@ -900,7 +914,7 @@ export function createPreviewer(
     }
   }
 
-  return { load, dispose };
+  return { load, selectSnapshotNode, dispose };
 }
 
 function triggerDownload(doc: Document, url: string, filename: string): void {

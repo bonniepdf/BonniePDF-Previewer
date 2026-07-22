@@ -34,7 +34,7 @@ function snapshotFor2Pages(): LayoutSnapshot {
             { page: 1, x: 10, y: 10, width: 180, height: 100 },
           ],
           children: [
-            { id: 'n2', type: 'TextBlock', name: 'title', rects: [{ page: 0, x: 10, y: 10, width: 180, height: 20 }], children: [] },
+            { id: 'n2', type: 'TextBlock', name: 'title', sourceId: 'src:title', rects: [{ page: 0, x: 10, y: 10, width: 180, height: 20 }], children: [] },
           ],
         },
       ],
@@ -194,6 +194,35 @@ describe('previewer plugin host', () => {
     expect(selected?.querySelector('.bpp-tree-name')?.textContent).toBe('title');
     // And its highlight is painted.
     expect(host.querySelectorAll('.bpp-hl').length).toBeGreaterThan(0);
+
+    handle.dispose();
+    host.remove();
+  });
+
+  it('programmatically selects nodes and emits source intent on modifier-click', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    handle.load(pages(2), { snapshot: snapshotFor2Pages() });
+
+    expect(handle.selectSnapshotNode('n2')).toBe(true);
+    expect(host.querySelector('.bpp-tree-row[aria-selected="true"] .bpp-tree-type')?.textContent).toBe(
+      'TextBlock',
+    );
+
+    const selected = vi.fn();
+    host.addEventListener('bonniepdf-node-select', selected);
+    const pageEl = host.querySelectorAll('.bpp-page')[0] as HTMLElement;
+    pageEl.dispatchEvent(
+      new MouseEvent('click', { clientX: 15, clientY: 15, bubbles: true, ctrlKey: true }),
+    );
+    expect(selected).toHaveBeenCalledOnce();
+    expect((selected.mock.calls[0][0] as CustomEvent).detail).toMatchObject({
+      nodeId: 'n2',
+      sourceId: 'src:title',
+      sourceNavigation: true,
+      origin: 'page',
+    });
 
     handle.dispose();
     host.remove();

@@ -181,6 +181,22 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     if (first) ctx.scrollToPage(first.page + 1);
   }
 
+  function emitSelection(node: SnapshotNode, sourceNavigation: boolean, origin: 'page' | 'tree' | 'finding'): void {
+    if (!ctx) return;
+    ctx.hostElement.dispatchEvent(
+      new CustomEvent('bonniepdf-node-select', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          nodeId: node.id,
+          sourceId: node.sourceId,
+          sourceNavigation,
+          origin,
+        },
+      }),
+    );
+  }
+
   // ── DOM building ───────────────────────────────────────────────────────────
 
   function el(tag: string, className?: string, text?: string): HTMLElement {
@@ -244,7 +260,10 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
       row.append(el('span', 'bpp-tree-type', node.type));
       if (node.name) row.append(el('span', 'bpp-tree-name', node.name));
 
-      row.addEventListener('click', () => select(node));
+      row.addEventListener('click', event => {
+        select(node);
+        emitSelection(node, event.ctrlKey || event.metaKey, 'tree');
+      });
       row.addEventListener('mouseenter', () => {
         if (selectedId !== node.id) paintSelection(node);
       });
@@ -318,9 +337,12 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     if (jumpable && f.nodeId) {
       const btn = el('button', 'bpp-cv-jump', `Go to element${f.page != null ? ` (page ${f.page + 1})` : ''}`) as HTMLButtonElement;
       btn.type = 'button';
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', event => {
         const target = findNode(n => n.id === f.nodeId);
-        if (target) select(target, true);
+        if (target) {
+          select(target, true);
+          emitSelection(target, event.ctrlKey || event.metaKey, 'finding');
+        }
       });
       card.append(btn);
     }
@@ -530,14 +552,17 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
         pageEl.addEventListener(
           'click',
           event => {
-            if (!visible || !ctx) return;
+            if ((!visible && !event.ctrlKey && !event.metaKey) || !ctx) return;
             const scale = ctx.scale();
             if (scale <= 0) return;
             const bounds = pageEl.getBoundingClientRect();
             const x = (event.clientX - bounds.left) / scale;
             const y = (event.clientY - bounds.top) / scale;
             const node = hitTest(pageIndex, x, y);
-            if (node) select(node, /* revealRow */ true);
+            if (node) {
+              select(node, /* revealRow */ true);
+              emitSelection(node, event.ctrlKey || event.metaKey, 'page');
+            }
           },
           { signal: clickAbort.signal }
         );
@@ -551,6 +576,13 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     sync({ scale }) {
       for (const h of markerRects) position(h.element, h.rect, scale);
       for (const h of selectionRects) position(h.element, h.rect, scale);
+    },
+
+    selectSnapshotNode(nodeId) {
+      const node = findNode(candidate => candidate.id === nodeId);
+      if (!node) return false;
+      select(node, /* revealRow */ true);
+      return true;
     },
 
     teardown() {

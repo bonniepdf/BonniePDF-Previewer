@@ -59,6 +59,11 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     else this.pending = { pages, options };
   }
 
+  /** Selects and reveals a layout-snapshot node by its current document id. */
+  selectSnapshotNode(nodeId: string): boolean {
+    return this.handle?.selectSnapshotNode(nodeId) ?? false;
+  }
+
   private readOptions(): PreviewerOptions {
     const showThumbs = this.getAttribute('show-thumbnails');
     const showInspector = this.getAttribute('show-inspector');

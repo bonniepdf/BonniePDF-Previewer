@@ -149,11 +149,19 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
     return best;
   }
 
-  /** Builds the <ul> tree for a node's children. */
-  function buildTree(doc: Document, nodes: SnapshotNode[]): HTMLElement {
+  /**
+   * Builds an ARIA tree level. The top call passes role 'tree'; nested calls
+   * pass 'group', per the WAI-ARIA tree pattern. Each <li> is presentational
+   * (role="none") so the <button role="treeitem"> is owned directly by the
+   * tree/group — otherwise the implicit list/listitem roles break the required
+   * parent/child relationship and axe flags every row.
+   */
+  function buildTree(doc: Document, nodes: SnapshotNode[], role: 'tree' | 'group'): HTMLElement {
     const ul = doc.createElement('ul');
+    ul.setAttribute('role', role);
     for (const node of nodes) {
       const li = doc.createElement('li');
+      li.setAttribute('role', 'none');
       const row = doc.createElement('button');
       row.type = 'button';
       row.className = 'bpp-tree-row';
@@ -202,7 +210,7 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
       rowsById.set(node.id, row);
       li.append(row);
-      if (node.children.length > 0) li.append(buildTree(doc, node.children));
+      if (node.children.length > 0) li.append(buildTree(doc, node.children, 'group'));
       ul.append(li);
     }
     return ul;
@@ -254,12 +262,10 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
       rootNode = context.snapshot.root;
       const doc = context.ownerDocument;
-      const tree = doc.createElement('ul');
+      // Root is the Document; buildTree returns the <ul role="tree"> itself.
+      const tree = buildTree(doc, [rootNode], 'tree');
       tree.className = 'bpp-tree';
-      tree.setAttribute('role', 'tree');
       tree.setAttribute('aria-label', label);
-      // Root is the Document; show its children (Pages) at the top level.
-      tree.append(buildTree(doc, [rootNode]));
       panelEl.replaceChildren(tree);
 
       // Reverse linking: click an element on the page to select it in the tree.

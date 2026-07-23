@@ -43,7 +43,7 @@ export function buildShell(
       <button type="button" class="bpp-btn" data-prev aria-label="Previous page" title="Previous page" disabled>
         ${icon('chevron-left')}
       </button>
-      <span class="bpp-pages-label" data-page-label aria-label="Page 1">
+      <span class="bpp-pages-label" data-page-label role="status" aria-label="Page 1">
         <span class="bpp-page-current" aria-hidden="true" data-current-page>0</span>
         <span class="bpp-page-sep" aria-hidden="true">/</span>
         <span class="bpp-page-total" aria-hidden="true" data-total-pages>0</span>
@@ -94,7 +94,7 @@ export function buildShell(
     <nav class="bpp-thumbs" aria-label="Page thumbnails" data-thumbs${showThumbs ? '' : ' hidden'}>
       <ul class="bpp-thumbs-list" data-thumbs-list></ul>
     </nav>
-    <div class="bpp-scroll" data-scroll>
+    <div class="bpp-scroll" data-scroll tabindex="0">
       <div class="bpp-pages" data-pages></div>
     </div>
   </div>

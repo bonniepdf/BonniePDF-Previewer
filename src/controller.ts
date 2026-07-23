@@ -261,6 +261,8 @@ export function createPreviewer(
     sideResizer.setAttribute('aria-orientation', 'vertical');
     sideResizer.setAttribute('aria-label', 'Resize inspector panel');
     sideResizer.setAttribute('aria-valuemin', String(SIDE_MIN_WIDTH));
+    sideResizer.setAttribute('aria-valuemax', String(SIDE_MAX_WIDTH));
+    sideResizer.setAttribute('aria-valuenow', String(SIDE_MIN_WIDTH));
     sideResizer.tabIndex = 0;
     setupSideResizer(sideResizer);
 
@@ -431,7 +433,7 @@ export function createPreviewer(
     pagesContainer.replaceChildren(...pageEls);
 
     observeLazyMount(pageCanvases, svgFor, i => `p${i}-`, scroll, PAGE_MOUNT_MARGIN);
-    observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN);
+    observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN, /* decorative */ true);
 
     // ── Viewer state ─────────────────────────────────────────────────────────
     let fitMode: 'fit-page' | 'fit-width' | 'custom' = viewZoom.mode;
@@ -832,6 +834,7 @@ export function createPreviewer(
     prefixFor: (index: number) => string,
     scrollRoot: HTMLElement | null,
     rootMargin: string,
+    decorative = false,
   ): void {
     const cache = new Map<number, string>();
     const mount = (host: HTMLElement, index: number) => {
@@ -842,6 +845,21 @@ export function createPreviewer(
         cache.set(index, html);
       }
       host.innerHTML = html;
+      // Thumbnails are a decorative mini-render — the enclosing button already
+      // carries a "Go to page N" label. Hide the cloned SVG from assistive tech
+      // and strip the exported PDF's hyperlink hotspots so they don't surface as
+      // unnamed, keyboard-focusable links nested inside the thumbnail button
+      // (which would trip axe's link-name + nested-interactive rules).
+      if (decorative) {
+        const svg = host.querySelector('svg');
+        if (svg) svg.setAttribute('aria-hidden', 'true');
+        for (const anchor of host.querySelectorAll('a')) {
+          anchor.removeAttribute('href');
+          anchor.removeAttribute('xlink:href');
+          anchor.removeAttribute('target');
+          anchor.setAttribute('tabindex', '-1');
+        }
+      }
       host.dataset.mounted = 'true';
     };
     const unmount = (host: HTMLElement) => {

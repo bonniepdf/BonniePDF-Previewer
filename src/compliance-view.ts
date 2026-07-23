@@ -221,8 +221,12 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     return `${pageText} · ${Math.round(r.width)}×${Math.round(r.height)} pt`;
   }
 
-  function buildTree(nodes: SnapshotNode[]): HTMLElement {
+  // The top call passes role 'tree'; nested calls pass 'group', per the
+  // WAI-ARIA tree pattern. Each <li> is presentational so the treeitem button
+  // is owned directly by the tree/group (see structure-view for the rationale).
+  function buildTree(nodes: SnapshotNode[], role: 'tree' | 'group'): HTMLElement {
     const ul = el('ul');
+    ul.setAttribute('role', role);
     for (const node of nodes) {
       const sev = worstSeverity(node.id);
       const subtreeHasIssue = sev != null || descendantHasIssue(node);
@@ -230,6 +234,7 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
       if (onlyIssues && !subtreeHasIssue) continue;
 
       const li = el('li');
+      li.setAttribute('role', 'none');
       const row = el('button', 'bpp-tree-row bpp-cv-row') as HTMLButtonElement;
       row.type = 'button';
       row.setAttribute('role', 'treeitem');
@@ -279,7 +284,7 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
       rowsById.set(node.id, row);
       li.append(row);
       if (node.children.length > 0) {
-        const childUl = buildTree(node.children);
+        const childUl = buildTree(node.children, 'group');
         if (childUl.childElementCount > 0) li.append(childUl);
       }
       ul.append(li);
@@ -445,10 +450,10 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
   function rebuildTree(): void {
     if (!treeHostEl || !rootNode) return;
     rowsById.clear();
-    const tree = el('ul', 'bpp-tree bpp-cv-tree');
-    tree.setAttribute('role', 'tree');
+    // buildTree returns the <ul role="tree"> itself; no bare wrapper <ul>.
+    const tree = buildTree([rootNode], 'tree');
+    tree.classList.add('bpp-tree', 'bpp-cv-tree');
     tree.setAttribute('aria-label', label);
-    tree.append(buildTree([rootNode]));
     treeHostEl.replaceChildren(tree);
     // Re-apply selection highlight in the rebuilt tree.
     if (selectedId) {

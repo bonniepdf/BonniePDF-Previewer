@@ -222,6 +222,27 @@ export interface PreviewerPlugin {
   teardown?(): void;
 }
 
+/**
+ * Controls which built-in toolbar groups render. Each flag defaults to `true`,
+ * so an omitted `toolbar` (or omitted flag) leaves the toolbar exactly as it was
+ * before this option existed. Hosts embedding the previewer in a context that
+ * owns its own chrome (e.g. an editor panel with native save/fullscreen) can
+ * drop the groups that don't apply. Note these gate the built-in groups only —
+ * plugin-contributed controls (via `addToolbarItem`) are unaffected.
+ */
+export interface ToolbarConfig {
+  /** The thumbnail-rail toggle button. Defaults to `true`. */
+  thumbnails?: boolean;
+  /** The previous / page-indicator / next group. Defaults to `true`. */
+  pageNav?: boolean;
+  /** The zoom-out / zoom-select / zoom-in group. Defaults to `true`. */
+  zoom?: boolean;
+  /** The full-screen toggle button. Defaults to `true`. */
+  fullscreen?: boolean;
+  /** The download-PDF button. Defaults to `true`. */
+  download?: boolean;
+}
+
 /** Visibility state for the previewer's collapsible navigation panels. */
 export interface PreviewerViewState {
   showThumbnails: boolean;
@@ -233,6 +254,11 @@ export interface PreviewerViewState {
 export interface PreviewerOptions {
   /** Plugins extending the previewer (e.g. the structure view). Optional. */
   plugins?: PreviewerPlugin[];
+  /**
+   * Which built-in toolbar groups to render. Every flag defaults to `true`, so
+   * omitting this leaves the full toolbar in place. See {@link ToolbarConfig}.
+   */
+  toolbar?: ToolbarConfig;
   /** Show the thumbnail rail on first render. Defaults to `true`. */
   showThumbnails?: boolean;
   /**

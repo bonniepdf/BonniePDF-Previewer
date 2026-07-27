@@ -16,6 +16,7 @@ export type {
   FitMode,
   PreviewerZoomState,
   PreviewerOptions,
+  ToolbarConfig,
   LoadOptions,
   PreviewerHandle,
   PreviewerPlugin,

@@ -361,4 +361,59 @@ describe('previewer plugin host', () => {
     handle.dispose();
     host.remove();
   });
+
+  it('renders every built-in toolbar group by default', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, {});
+    handle.load(pages(1));
+    expect(host.querySelector('[data-toggle-thumbs]')).toBeTruthy();
+    expect(host.querySelector('[data-prev]')).toBeTruthy();
+    expect(host.querySelector('[data-zoom-select]')).toBeTruthy();
+    expect(host.querySelector('[data-fullscreen]')).toBeTruthy();
+    expect(host.querySelector('[data-download]')).toBeTruthy();
+    handle.dispose();
+    host.remove();
+  });
+
+  it('omits toolbar groups disabled via the toolbar option (no dangling separators)', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { toolbar: { fullscreen: false, download: false } });
+    handle.load(pages(1));
+
+    // Disabled groups are gone…
+    expect(host.querySelector('[data-fullscreen]')).toBeNull();
+    expect(host.querySelector('[data-download]')).toBeNull();
+    // …while the rest of the toolbar (and its wiring) is unaffected.
+    expect(host.querySelector('[data-toggle-thumbs]')).toBeTruthy();
+    expect(host.querySelector('[data-prev]')).toBeTruthy();
+    expect(host.querySelector('[data-zoom-select]')).toBeTruthy();
+    expect(host.querySelector('[data-toolbar-end]')).toBeTruthy();
+
+    // Three remaining groups (thumbnails / pageNav / zoom) → exactly two
+    // separators between them, none left dangling by the removed groups.
+    expect(host.querySelectorAll('.bpp-toolbar > .bpp-sep')).toHaveLength(2);
+    handle.dispose();
+    host.remove();
+  });
+
+  it('reads per-group toolbar flags from element attributes', () => {
+    const tagName = 'bonnie-pdf-previewer-toolbar-test';
+    if (!customElements.get(tagName)) {
+      customElements.define(tagName, class extends BonniePdfPreviewerElement {});
+    }
+    const element = document.createElement(tagName) as BonniePdfPreviewerElement;
+    element.setAttribute('show-fullscreen', 'false');
+    element.setAttribute('show-download', 'false');
+    document.body.append(element);
+    element.load(pages(1));
+
+    const root = element.shadowRoot!;
+    expect(root.querySelector('[data-fullscreen]')).toBeNull();
+    expect(root.querySelector('[data-download]')).toBeNull();
+    expect(root.querySelector('[data-zoom-select]')).toBeTruthy();
+
+    element.remove();
+  });
 });

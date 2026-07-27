@@ -3,19 +3,19 @@
 // reset) cannot reach the SVG pages — the very class of bug that plagues
 // light-DOM embedding is structurally impossible here.
 //
-// Theming: every colour resolves the shared BonniePDF tokens (`--bpdf-c-*` /
+// Theming: every colour resolves the shared BonniePDF tokens (`--bpdf-*` /
 // `--bpdf-*`) set by @bonniepdf/ui-shared on the host document, then a literal
 // light-theme default. Custom properties pierce the shadow boundary, so the
 // previewer matches the host page's theme automatically.
 
 export const STYLES = /* css */ `
 :host {
-  --_divider: var(--bpdf-c-divider, #e2e8f0);
-  --_bg: var(--bpdf-c-bg, #ffffff);
-  --_bg-alt: var(--bpdf-c-bg-alt, #f1f5f9);
-  --_bg-soft: var(--bpdf-c-bg-soft, #f8fafc);
-  --_brand: var(--bpdf-c-brand-2, #2563eb);
-  --_brand-soft: var(--bpdf-c-brand-soft, #dbeafe);
+  --_divider: var(--bpdf-divider, #e2e8f0);
+  --_bg: var(--bpdf-bg, #ffffff);
+  --_bg-alt: var(--bpdf-bg-alt, #f1f5f9);
+  --_bg-soft: var(--bpdf-bg-soft, #f8fafc);
+  --_brand: var(--bpdf-brand-2, #2563eb);
+  --_brand-soft: var(--bpdf-brand-soft, #dbeafe);
   --_text-1: var(--bpdf-text-1, #0f172a);
   --_text-2: var(--bpdf-text-2, #475569);
   --_text-3: var(--bpdf-text-3, #94a3b8);
@@ -23,10 +23,10 @@ export const STYLES = /* css */ `
   --_radius-sm: 6px;
 
   /* Compliance severity palette (overridable via --bpdf-* tokens). */
-  --_sev-error: var(--bpdf-c-error, #dc2626);
-  --_sev-warning: var(--bpdf-c-warning, #d97706);
-  --_sev-info: var(--bpdf-c-info, #2563eb);
-  --_sev-ok: var(--bpdf-c-success, #16a34a);
+  --_sev-error: var(--bpdf-error, #dc2626);
+  --_sev-warning: var(--bpdf-warning, #d97706);
+  --_sev-info: var(--bpdf-info, #2563eb);
+  --_sev-ok: var(--bpdf-success, #16a34a);
 
   display: block;
   height: 100%;

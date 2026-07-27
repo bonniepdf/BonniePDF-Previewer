@@ -8,6 +8,7 @@ import type {
   PreviewerPlugin,
   PreviewerViewState,
   PreviewPage,
+  ToolbarConfig,
 } from './types';
 
 /**
@@ -27,6 +28,10 @@ import type {
  * Configuration is read from attributes: `show-thumbnails` (`"false"` to hide),
  * `show-inspector`, `preference-key`, `fit-mode` (`fit-page` | `fit-width`),
  * `download-filename`, and `label`.
+ *
+ * Individual built-in toolbar groups can be dropped (each defaults to shown) via
+ * `show-page-nav`, `show-zoom`, `show-fullscreen`, `show-download`, and
+ * `show-thumbnails-toggle`, each set to `"false"` to hide that group.
  *
  * The viewer renders inside a shadow root, so host-page CSS cannot reach the SVG
  * pages — the embedded fonts always win and there are no id collisions between
@@ -77,6 +82,7 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     if (this.hasAttribute('compliance-view')) plugins.push(complianceView());
     return {
       plugins: plugins.length > 0 ? plugins : undefined,
+      toolbar: this.readToolbarConfig(),
       showThumbnails: saved?.showThumbnails ?? (showThumbs === null ? undefined : showThumbs !== 'false'),
       showInspector: saved?.showInspector ?? (showInspector === null ? undefined : showInspector !== 'false'),
       initialZoom: saved?.zoom,
@@ -87,6 +93,24 @@ export class BonniePdfPreviewerElement extends HTMLElement {
       hideBorder: this.getAttribute('hide-border') === 'true',
       styleScrollbars: this.getAttribute('style-scrollbars') === 'true',
     };
+  }
+
+  /** Reads the per-group toolbar flags. A group attribute defaults to shown and
+   * is hidden only by an explicit `"false"`. Returns undefined when no toolbar
+   * attribute is present, leaving the full toolbar in place. */
+  private readToolbarConfig(): ToolbarConfig | undefined {
+    const flag = (name: string): boolean | undefined => {
+      const value = this.getAttribute(name);
+      return value === null ? undefined : value !== 'false';
+    };
+    const config: ToolbarConfig = {
+      thumbnails: flag('show-thumbnails-toggle'),
+      pageNav: flag('show-page-nav'),
+      zoom: flag('show-zoom'),
+      fullscreen: flag('show-fullscreen'),
+      download: flag('show-download'),
+    };
+    return Object.values(config).some(v => v !== undefined) ? config : undefined;
   }
 
   private readPreferences(key: string): Partial<PreviewerViewState> | undefined {

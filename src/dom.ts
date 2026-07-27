@@ -1,6 +1,6 @@
 import { icon } from './icons';
 import { STYLES } from './styles';
-import type { PreviewerOptions } from './types';
+import type { PreviewerOptions, ToolbarConfig } from './types';
 
 /**
  * Rewrites every `id` (and matching `url(#…)` / `href="#…"` reference) in an SVG
@@ -23,23 +23,28 @@ export function buildShell(
   root: ShadowRoot | HTMLElement,
   opts: Required<
     Pick<PreviewerOptions, 'showThumbnails' | 'hideBorder' | 'styleScrollbars' | 'title' | 'fitMode'>
-  >,
+  > & { toolbar: Required<ToolbarConfig> },
 ): void {
   const showThumbs = opts.showThumbnails;
-  root.innerHTML = `
-<style>${STYLES}</style>
-<div class="bpp${opts.hideBorder ? ' bpp-no-border' : ''}${opts.styleScrollbars ? ' bpp-styled-scrollbars' : ''}" part="container" role="region" aria-label="${escapeAttr(opts.title)}">
-  <div class="bpp-toolbar" role="toolbar" aria-label="Document preview controls">
-    <div class="bpp-group" role="group" aria-label="Page thumbnails">
+  const tb = opts.toolbar;
+
+  // Each configurable group is emitted only when enabled; the separators are
+  // then interleaved between the *present* groups so a hidden group never leaves
+  // a dangling divider behind. The inspector end-slot is always present (plugins
+  // append into it) and carries no leading separator, matching the prior markup.
+  const groups: string[] = [];
+  if (tb.thumbnails) {
+    groups.push(`<div class="bpp-group" role="group" aria-label="Page thumbnails">
       <button type="button" class="bpp-btn${showThumbs ? ' bpp-btn-active' : ''}" data-toggle-thumbs
         aria-label="Toggle page thumbnails" aria-pressed="${showThumbs}"
         title="${showThumbs ? 'Hide' : 'Show'} page thumbnails">
         ${icon('panel-left-close', 'bpp-icon bpp-icon-thumbs-open')}
         ${icon('panel-left', 'bpp-icon bpp-icon-thumbs-closed')}
       </button>
-    </div>
-    <div class="bpp-sep" role="separator" aria-hidden="true"></div>
-    <div class="bpp-group" role="group" aria-label="Page navigation">
+    </div>`);
+  }
+  if (tb.pageNav) {
+    groups.push(`<div class="bpp-group" role="group" aria-label="Page navigation">
       <button type="button" class="bpp-btn" data-prev aria-label="Previous page" title="Previous page" disabled>
         ${icon('chevron-left')}
       </button>
@@ -51,9 +56,10 @@ export function buildShell(
       <button type="button" class="bpp-btn" data-next aria-label="Next page" title="Next page" disabled>
         ${icon('chevron-right')}
       </button>
-    </div>
-    <div class="bpp-sep" role="separator" aria-hidden="true"></div>
-    <div class="bpp-group" role="group" aria-label="Zoom">
+    </div>`);
+  }
+  if (tb.zoom) {
+    groups.push(`<div class="bpp-group" role="group" aria-label="Zoom">
       <button type="button" class="bpp-btn" data-zoom-out aria-label="Zoom out" title="Zoom out">
         ${icon('zoom-out')}
       </button>
@@ -72,22 +78,34 @@ export function buildShell(
       <button type="button" class="bpp-btn" data-zoom-in aria-label="Zoom in" title="Zoom in">
         ${icon('zoom-in')}
       </button>
-    </div>
-    <div class="bpp-sep" role="separator" aria-hidden="true"></div>
-    <div class="bpp-group" role="group" aria-label="Preview display">
+    </div>`);
+  }
+  if (tb.fullscreen) {
+    groups.push(`<div class="bpp-group" role="group" aria-label="Preview display">
       <button type="button" class="bpp-btn" data-fullscreen aria-label="Full screen" aria-pressed="false" title="Full screen">
         ${icon('maximize', 'bpp-icon bpp-icon-fullscreen-open')}
         ${icon('minimize', 'bpp-icon bpp-icon-fullscreen-close')}
         <span class="bpp-fullscreen-label">Exit Fullscreen</span>
       </button>
-    </div>
-    <div class="bpp-sep" role="separator" aria-hidden="true"></div>
-    <div class="bpp-group" role="group" aria-label="Download">
+    </div>`);
+  }
+  if (tb.download) {
+    groups.push(`<div class="bpp-group" role="group" aria-label="Download">
       <button type="button" class="bpp-btn bpp-btn-download" data-download aria-label="Download PDF" title="Download PDF" disabled>
         ${icon('download')}
         <span class="bpp-btn-label">Download PDF</span>
       </button>
-    </div>
+    </div>`);
+  }
+
+  const separator = '<div class="bpp-sep" role="separator" aria-hidden="true"></div>';
+  const toolbarInner = groups.join(separator);
+
+  root.innerHTML = `
+<style>${STYLES}</style>
+<div class="bpp${opts.hideBorder ? ' bpp-no-border' : ''}${opts.styleScrollbars ? ' bpp-styled-scrollbars' : ''}" part="container" role="region" aria-label="${escapeAttr(opts.title)}">
+  <div class="bpp-toolbar" role="toolbar" aria-label="Document preview controls">
+    ${toolbarInner}
     <div class="bpp-group bpp-group-end" role="group" aria-label="Inspector" data-toolbar-end></div>
   </div>
   <div class="bpp-body">

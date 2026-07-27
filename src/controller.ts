@@ -48,6 +48,13 @@ export function createPreviewer(
     downloadFilename: options.downloadFilename ?? 'document.pdf',
     hideBorder: options.hideBorder ?? false,
     styleScrollbars: options.styleScrollbars ?? false,
+    toolbar: {
+      thumbnails: options.toolbar?.thumbnails ?? true,
+      pageNav: options.toolbar?.pageNav ?? true,
+      zoom: options.toolbar?.zoom ?? true,
+      fullscreen: options.toolbar?.fullscreen ?? true,
+      download: options.toolbar?.download ?? true,
+    },
   };
 
   buildShell(container, opts);

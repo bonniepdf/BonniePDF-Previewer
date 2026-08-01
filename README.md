@@ -56,7 +56,10 @@ state. Use the same key on multiple viewers to share the preference:
 Entering fullscreen temporarily switches the document to Fit page so it remains
 comfortably sized on large monitors. Leaving fullscreen restores the previous
 zoom unless the user selected a different zoom while fullscreen. The control
-also expands to show “Exit Fullscreen” while active.
+also expands to show “Exit Fullscreen” while active. While fullscreen is open,
+the previewer locks scrolling and releases any reserved scrollbar gutter on its
+owning document, then restores the host page's previous styles when fullscreen
+closes or the previewer is disposed.
 
 ## Usage — factory (any framework / light DOM)
 

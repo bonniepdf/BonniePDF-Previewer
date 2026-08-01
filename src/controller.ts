@@ -27,6 +27,73 @@ const SIDE_DOC_MIN = 320;
 
 const clamp = (s: number) => Math.min(Math.max(s, MIN_SCALE), MAX_SCALE);
 
+interface InlineStyleValue {
+  value: string;
+  priority: string;
+}
+
+interface DocumentScrollLock {
+  owners: Set<HTMLElement>;
+  documentElement: HTMLElement;
+  documentElementOverflow: InlineStyleValue;
+  documentElementScrollbarGutter: InlineStyleValue;
+  body: HTMLElement | null;
+  bodyOverflow: InlineStyleValue | null;
+}
+
+// Fullscreen may be entered by more than one previewer in the same document
+// (especially when the fixed-position fallback is used). Keep a per-document
+// owner set so one previewer cannot restore page scrolling while another still
+// needs it locked.
+const documentScrollLocks = new WeakMap<Document, DocumentScrollLock>();
+
+function inlineStyleValue(element: HTMLElement, property: string): InlineStyleValue {
+  return {
+    value: element.style.getPropertyValue(property),
+    priority: element.style.getPropertyPriority(property),
+  };
+}
+
+function restoreInlineStyleValue(element: HTMLElement, property: string, previous: InlineStyleValue): void {
+  if (previous.value) element.style.setProperty(property, previous.value, previous.priority);
+  else element.style.removeProperty(property);
+}
+
+function lockDocumentScroll(doc: Document, owner: HTMLElement): void {
+  let lock = documentScrollLocks.get(doc);
+  if (!lock) {
+    const body = doc.body;
+    lock = {
+      owners: new Set(),
+      documentElement: doc.documentElement,
+      documentElementOverflow: inlineStyleValue(doc.documentElement, 'overflow'),
+      documentElementScrollbarGutter: inlineStyleValue(doc.documentElement, 'scrollbar-gutter'),
+      body,
+      bodyOverflow: body ? inlineStyleValue(body, 'overflow') : null,
+    };
+    documentScrollLocks.set(doc, lock);
+  }
+  if (lock.owners.has(owner)) return;
+
+  lock.owners.add(owner);
+  lock.documentElement.style.setProperty('overflow', 'hidden');
+  lock.documentElement.style.setProperty('scrollbar-gutter', 'auto');
+  lock.body?.style.setProperty('overflow', 'hidden');
+}
+
+function unlockDocumentScroll(doc: Document, owner: HTMLElement): void {
+  const lock = documentScrollLocks.get(doc);
+  if (!lock) return;
+
+  lock.owners.delete(owner);
+  if (lock.owners.size > 0) return;
+
+  restoreInlineStyleValue(lock.documentElement, 'overflow', lock.documentElementOverflow);
+  restoreInlineStyleValue(lock.documentElement, 'scrollbar-gutter', lock.documentElementScrollbarGutter);
+  if (lock.body && lock.bodyOverflow) restoreInlineStyleValue(lock.body, 'overflow', lock.bodyOverflow);
+  documentScrollLocks.delete(doc);
+}
+
 /**
  * Builds a PDF previewer into `container` (a shadow root for the web component,
  * or any element for light-DOM use) and returns a handle to drive it. The
@@ -555,6 +622,8 @@ export function createPreviewer(
         zoomBeforeFullscreen = null;
       }
       isFullscreen = expanded;
+      if (isFullscreen) lockDocumentScroll(ownerDoc, hostEl);
+      else unlockDocumentScroll(ownerDoc, hostEl);
       shell?.classList.toggle('bpp-fullscreen', isFullscreen);
       viewport = { width: scroll.clientWidth, height: scroll.clientHeight };
       syncToolbar();

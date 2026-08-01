@@ -80,6 +80,9 @@ describe('previewer plugin host', () => {
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
     expect(zoom.value).toBe('fit-width');
     expect(fullscreenLabel.textContent).toBe('Exit Fullscreen');
+    expect(document.documentElement.style.overflow).toBe('');
+    expect(document.documentElement.style.getPropertyValue('scrollbar-gutter')).toBe('');
+    expect(document.body.style.overflow).toBe('');
 
     fullscreen.click();
     expect(showPopover).toHaveBeenCalledOnce();
@@ -89,6 +92,9 @@ describe('previewer plugin host', () => {
     expect(fullscreen.getAttribute('aria-pressed')).toBe('true');
     expect(fullscreen.getAttribute('aria-label')).toBe('Exit full screen');
     expect(zoom.value).toBe('fit-page');
+    expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(document.documentElement.style.getPropertyValue('scrollbar-gutter')).toBe('auto');
+    expect(document.body.style.overflow).toBe('hidden');
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(hidePopover).toHaveBeenCalledOnce();
@@ -97,6 +103,9 @@ describe('previewer plugin host', () => {
     expect(shell?.classList.contains('bpp-fullscreen')).toBe(false);
     expect(fullscreen.getAttribute('aria-label')).toBe('Full screen');
     expect(zoom.value).toBe('fit-width');
+    expect(document.documentElement.style.overflow).toBe('');
+    expect(document.documentElement.style.getPropertyValue('scrollbar-gutter')).toBe('');
+    expect(document.body.style.overflow).toBe('');
 
     // A deliberate zoom choice made in fullscreen survives exit.
     fullscreen.click();
@@ -107,6 +116,46 @@ describe('previewer plugin host', () => {
 
     handle.dispose();
     host.remove();
+  });
+
+  it('restores the document scroll styles when disposed while full screen', () => {
+    const originalDocumentOverflow = document.documentElement.style.overflow;
+    const originalScrollbarGutter = document.documentElement.style.getPropertyValue('scrollbar-gutter');
+    const originalBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'clip';
+    document.documentElement.style.setProperty('scrollbar-gutter', 'stable both-edges');
+    document.body.style.overflow = 'auto';
+
+    const host = document.createElement('div');
+    Object.defineProperties(host, {
+      showPopover: { configurable: true, value: vi.fn() },
+      hidePopover: { configurable: true, value: vi.fn() },
+    });
+    document.body.append(host);
+    const handle = createPreviewer(host);
+    handle.load(pages(1));
+
+    try {
+      (host.querySelector('[data-fullscreen]') as HTMLButtonElement).click();
+      expect(document.documentElement.style.overflow).toBe('hidden');
+      expect(document.documentElement.style.getPropertyValue('scrollbar-gutter')).toBe('auto');
+      expect(document.body.style.overflow).toBe('hidden');
+
+      handle.dispose();
+      expect(document.documentElement.style.overflow).toBe('clip');
+      expect(document.documentElement.style.getPropertyValue('scrollbar-gutter')).toBe('stable both-edges');
+      expect(document.body.style.overflow).toBe('auto');
+    } finally {
+      handle.dispose();
+      host.remove();
+      document.documentElement.style.overflow = originalDocumentOverflow;
+      if (originalScrollbarGutter) {
+        document.documentElement.style.setProperty('scrollbar-gutter', originalScrollbarGutter);
+      } else {
+        document.documentElement.style.removeProperty('scrollbar-gutter');
+      }
+      document.body.style.overflow = originalBodyOverflow;
+    }
   });
 
   it('runs plugin lifecycle hooks in order', () => {

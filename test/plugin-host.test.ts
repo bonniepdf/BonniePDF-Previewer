@@ -277,6 +277,48 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
+  it('Document and its auto-created Page clear selection and navigate to the document declaration', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    const snapshot = snapshotFor2Pages();
+    snapshot.root.sourceId = 'src:document';
+    snapshot.root.children[0].sourceId = 'src:document';
+    handle.load(pages(2), { snapshot });
+
+    const selected = vi.fn();
+    host.addEventListener('bonniepdf-node-select', selected);
+    const rows = host.querySelectorAll<HTMLButtonElement>('.bpp-tree-row');
+
+    rows[2].click();
+    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(1);
+    expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(1);
+
+    rows[0].click();
+    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(0);
+    expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(0);
+    expect((selected.mock.calls.at(-1)![0] as CustomEvent).detail).toMatchObject({
+      nodeId: 'n0',
+      sourceId: 'src:document',
+      sourceNavigation: true,
+      origin: 'tree',
+    });
+
+    rows[2].click();
+    rows[1].click();
+    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(0);
+    expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(0);
+    expect((selected.mock.calls.at(-1)![0] as CustomEvent).detail).toMatchObject({
+      nodeId: 'n1',
+      sourceId: 'src:document',
+      sourceNavigation: true,
+      origin: 'tree',
+    });
+
+    handle.dispose();
+    host.remove();
+  });
+
   it('two inspector plugins share one tabbed panel — only one visible at a time', () => {
     const host = document.createElement('div');
     document.body.append(host);

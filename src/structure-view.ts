@@ -60,6 +60,28 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
     highlights = [];
   }
 
+  function clearSelection(): void {
+    selectedId = null;
+    for (const row of rowsById.values()) row.setAttribute('aria-selected', 'false');
+    clearHighlights();
+  }
+
+  /**
+   * The synthetic Document and constructor-created first Page share the
+   * Document declaration's source id. They act as a reset/navigation target,
+   * rather than as selectable page geometry.
+   */
+  function isDocumentNavigationNode(node: SnapshotNode): boolean {
+    if (!rootNode) return false;
+    if (node.id === rootNode.id) return true;
+    return (
+      node.type === 'Page' &&
+      rootNode.children.includes(node) &&
+      rootNode.sourceId !== undefined &&
+      node.sourceId === rootNode.sourceId
+    );
+  }
+
   function paint(node: SnapshotNode, hover: boolean): void {
     if (!ctx) return;
     clearHighlights();
@@ -83,6 +105,14 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
   function select(node: SnapshotNode, revealRow = false): void {
     if (!ctx) return;
+    if (isDocumentNavigationNode(node)) {
+      clearSelection();
+      if (revealRow) {
+        const row = rowsById.get(node.id);
+        if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
     selectedId = node.id;
     for (const [id, row] of rowsById) row.setAttribute('aria-selected', String(id === node.id));
     paint(node, false);
@@ -189,7 +219,7 @@ export function structureView(options: StructureViewOptions = {}): PreviewerPlug
 
       row.addEventListener('click', event => {
         select(node);
-        emitSelection(node, event.ctrlKey || event.metaKey, 'tree');
+        emitSelection(node, isDocumentNavigationNode(node) || event.ctrlKey || event.metaKey, 'tree');
       });
       row.addEventListener('mouseenter', () => {
         if (selectedId !== node.id) paint(node, true);

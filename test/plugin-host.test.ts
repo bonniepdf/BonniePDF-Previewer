@@ -42,6 +42,20 @@ function snapshotFor2Pages(): LayoutSnapshot {
   };
 }
 
+function sidePanelPlugin(id: string, label: string): PreviewerPlugin {
+  return {
+    name: `${id}-view`,
+    setup(context) {
+      context.addSidePanel({
+        id,
+        label,
+        element: context.ownerDocument.createElement('div'),
+        defaultOpen: true,
+      });
+    },
+  };
+}
+
 describe('previewer plugin host', () => {
   it('backward compat: with no plugins the chrome and pages still render', () => {
     const host = document.createElement('div');
@@ -184,10 +198,10 @@ describe('previewer plugin host', () => {
     expect(calls[calls.length - 1]).toBe('cleanup');
   });
 
-  it('structure view renders the tree and paints multi-page highlights on select', () => {
+  it('accessibility view renders the complete tree and paints multi-page highlights on select', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
     // Tree rows for Document, Page, TextBlock.
@@ -200,7 +214,7 @@ describe('previewer plugin host', () => {
 
     // Select the Page node (index 1): it has rects on both pages.
     (rows[1] as HTMLButtonElement).click();
-    const highlights = host.querySelectorAll('.bpp-hl');
+    const highlights = host.querySelectorAll('.bpp-cv-sel');
     expect(highlights.length).toBe(2);
     expect(rows[1].getAttribute('aria-selected')).toBe('true');
 
@@ -208,10 +222,10 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
-  it('structure view shows each node size, with a page-span suffix for multi-page nodes', () => {
+  it('accessibility view shows each node size, with a page-span suffix for multi-page nodes', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView()] });
+    const handle = createPreviewer(host, { plugins: [complianceView()] });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
     const sizes = Array.from(host.querySelectorAll('.bpp-tree-size')).map(s => s.textContent);
@@ -229,7 +243,7 @@ describe('previewer plugin host', () => {
   it('reverse linking: clicking the page selects the deepest node in the tree', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
     const pageEl = host.querySelectorAll('.bpp-page')[0] as HTMLElement;
@@ -242,7 +256,7 @@ describe('previewer plugin host', () => {
     expect(selected?.querySelector('.bpp-tree-type')?.textContent).toBe('TextBlock');
     expect(selected?.querySelector('.bpp-tree-name')?.textContent).toBe('title');
     // And its highlight is painted.
-    expect(host.querySelectorAll('.bpp-hl').length).toBeGreaterThan(0);
+    expect(host.querySelectorAll('.bpp-cv-sel').length).toBeGreaterThan(0);
 
     handle.dispose();
     host.remove();
@@ -251,7 +265,7 @@ describe('previewer plugin host', () => {
   it('programmatically selects nodes and emits source intent on modifier-click', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
     expect(handle.selectSnapshotNode('n2')).toBe(true);
@@ -277,10 +291,10 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
-  it('Document and its auto-created Page clear selection and navigate to the document declaration', () => {
+  it('Accessibility Document and auto-created Page rows clear selection and navigate to the document declaration', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView({ openByDefault: true })] });
+    const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
     const snapshot = snapshotFor2Pages();
     snapshot.root.sourceId = 'src:document';
     snapshot.root.children[0].sourceId = 'src:document';
@@ -291,11 +305,11 @@ describe('previewer plugin host', () => {
     const rows = host.querySelectorAll<HTMLButtonElement>('.bpp-tree-row');
 
     rows[2].click();
-    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(1);
+    expect(host.querySelectorAll('.bpp-cv-sel')).toHaveLength(1);
     expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(1);
 
     rows[0].click();
-    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(0);
+    expect(host.querySelectorAll('.bpp-cv-sel')).toHaveLength(0);
     expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(0);
     expect((selected.mock.calls.at(-1)![0] as CustomEvent).detail).toMatchObject({
       nodeId: 'n0',
@@ -306,13 +320,24 @@ describe('previewer plugin host', () => {
 
     rows[2].click();
     rows[1].click();
-    expect(host.querySelectorAll('.bpp-hl')).toHaveLength(0);
+    expect(host.querySelectorAll('.bpp-cv-sel')).toHaveLength(0);
     expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(0);
     expect((selected.mock.calls.at(-1)![0] as CustomEvent).detail).toMatchObject({
       nodeId: 'n1',
       sourceId: 'src:document',
       sourceNavigation: true,
       origin: 'tree',
+    });
+
+    rows[2].click();
+    const pageEl = host.querySelectorAll('.bpp-page')[0] as HTMLElement;
+    pageEl.dispatchEvent(new MouseEvent('click', { clientX: 15, clientY: 100, bubbles: true }));
+    expect(host.querySelectorAll('.bpp-tree-row[aria-selected="true"]')).toHaveLength(0);
+    expect((selected.mock.calls.at(-1)![0] as CustomEvent).detail).toMatchObject({
+      nodeId: 'n1',
+      sourceId: 'src:document',
+      sourceNavigation: true,
+      origin: 'page',
     });
 
     handle.dispose();
@@ -323,7 +348,7 @@ describe('previewer plugin host', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const handle = createPreviewer(host, {
-      plugins: [structureView({ openByDefault: true }), complianceView({ openByDefault: true })],
+      plugins: [sidePanelPlugin('layout', 'Layout'), complianceView({ openByDefault: true })],
     });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
@@ -333,22 +358,22 @@ describe('previewer plugin host', () => {
     expect(tabs).toHaveLength(2);
     expect(host.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(false);
 
-    const structurePanel = host.querySelector<HTMLElement>('[data-side-panel="structure"]')!;
+    const layoutPanel = host.querySelector<HTMLElement>('[data-side-panel="layout"]')!;
     const compliancePanel = host.querySelector<HTMLElement>('[data-side-panel="compliance"]')!;
     expect(Array.from(tabs).map(tab => tab.querySelector('.bpp-side-tab-label')?.textContent)).toEqual([
       'Accessibility',
-      'Structure',
+      'Layout',
     ]);
 
-    // Structure registered first, so it wins the default-open race; compliance is a quiet tab.
-    expect(structurePanel.hidden).toBe(false);
+    // Layout registered first, so it wins the default-open race; compliance is a quiet tab.
+    expect(layoutPanel.hidden).toBe(false);
     expect(compliancePanel.hidden).toBe(true);
 
-    // Switching to the compliance tab hides the structure panel (mutually exclusive).
+    // Switching to the compliance tab hides the layout panel (mutually exclusive).
     const complianceTab = Array.from(tabs).find(t => t.textContent?.includes('Accessibility')) as HTMLButtonElement;
     complianceTab.click();
     expect(compliancePanel.hidden).toBe(false);
-    expect(structurePanel.hidden).toBe(true);
+    expect(layoutPanel.hidden).toBe(true);
 
     // The single toolbar toggle collapses the whole region.
     const toggle = host.querySelector<HTMLButtonElement>('.bpp-side-toggle')!;
@@ -369,7 +394,7 @@ describe('previewer plugin host', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const handle = createPreviewer(host, {
-      plugins: [structureView(), complianceView()],
+      plugins: [sidePanelPlugin('layout', 'Layout'), complianceView()],
       showThumbnails: false,
       showInspector: false,
       onViewStateChange: state => states.push(state),
@@ -415,6 +440,11 @@ describe('previewer plugin host', () => {
     document.body.append(element);
     element.load(pages(1), { snapshot: snapshotFor2Pages() });
 
+    // The deprecated structure attribute aliases Accessibility; both together
+    // must still register only one inspector.
+    expect(element.shadowRoot?.querySelectorAll('[data-side-panel="compliance"]')).toHaveLength(1);
+    expect(element.shadowRoot?.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(true);
+
     expect(element.shadowRoot?.querySelector<HTMLElement>('[data-thumbs]')?.hidden).toBe(true);
     expect(element.shadowRoot?.querySelector<HTMLElement>('.bpp-side')?.hidden).toBe(true);
     expect(element.shadowRoot?.querySelector<HTMLSelectElement>('[data-zoom-select]')?.value).toBe('custom');
@@ -442,12 +472,14 @@ describe('previewer plugin host', () => {
     localStorage.removeItem(key);
   });
 
-  it('structure view shows an empty state when no snapshot is provided', () => {
+  it('deprecated structureView() aliases the accessibility inspector', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [structureView()] });
+    const plugin = structureView();
+    expect(plugin.name).toBe('structure-view');
+    const handle = createPreviewer(host, { plugins: [plugin] });
     handle.load(pages(1));
-    const side = host.querySelector('[data-side-panel="structure"]');
+    const side = host.querySelector('[data-side-panel="compliance"]');
     expect(side?.textContent).toContain('No structure data');
     handle.dispose();
     host.remove();

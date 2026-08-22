@@ -1,5 +1,4 @@
 import { createPreviewer } from './controller';
-import { structureView } from './structure-view';
 import { complianceView } from './compliance-view';
 import type {
   LoadOptions,
@@ -74,12 +73,12 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     const showInspector = this.getAttribute('show-inspector');
     const preferenceKey = this.getAttribute('preference-key');
     const saved = preferenceKey ? this.readPreferences(preferenceKey) : undefined;
-    // Plugins are opt-in via boolean attributes, so the default element is
-    // byte-for-byte the previous component. `structure-view` adds the layout
-    // tree; `compliance-view` adds the accessibility/compliance panel.
+    // `structure-view` is retained as a deprecated alias. Register exactly one
+    // unified Accessibility inspector when either (or both) attributes appear.
     const plugins: PreviewerPlugin[] = [];
-    if (this.hasAttribute('structure-view')) plugins.push(structureView());
-    if (this.hasAttribute('compliance-view')) plugins.push(complianceView());
+    if (this.hasAttribute('compliance-view') || this.hasAttribute('structure-view')) {
+      plugins.push(complianceView());
+    }
     return {
       plugins: plugins.length > 0 ? plugins : undefined,
       toolbar: this.readToolbarConfig(),

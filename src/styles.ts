@@ -212,7 +212,7 @@ export const STYLES = /* css */ `
 .bpp-page-canvas { position: absolute; inset: 0; }
 .bpp-page svg { display: block; width: 100%; height: 100%; }
 
-/* ── Plugin overlays (structure view highlights) ──────────────────────────── */
+/* ── Plugin overlays (inspector highlights) ───────────────────────────────── */
 .bpp-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .bpp-hl {
   position: absolute; box-sizing: border-box;

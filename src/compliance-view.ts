@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// Compliance-view plugin (sibling of structure-view).
+// Accessibility inspector plugin.
 //
-// Where the structure view answers "what is the layout tree?", the compliance
-// view answers "is this document accessible, and where are the problems?". It
-// renders the same layout snapshot as a tree, but decorates every node with its
+// It answers both "what is the layout tree?" and "is this document accessible,
+// and where are the problems?". It renders the layout snapshot as a tree and
+// decorates every node with its
 // accessibility role and a severity dot, surfaces a document-level summary, and
 // — its differentiator — paints the flagged elements directly onto the page so an
 // author can *see* the inaccessible regions and click straight to the fix.
@@ -13,7 +13,7 @@
 // `evaluateCompliance`). With a report it shows severities and fix hints; with
 // only a snapshot it still shows role/tagged/artifact badges. It never modifies
 // the SVG and never touches controller internals — everything is drawn into the
-// host's per-page overlay layers exactly like the structure view.
+// host's per-page overlay layers.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -84,6 +84,22 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
   let selectionRects: ActiveRect[] = [];
   let selectedId: string | null = null;
   let clickAbort: AbortController | null = null;
+
+  /**
+   * The synthetic Document and constructor-created first Page share the
+   * Document declaration's source id. Treat both as source-navigation/reset
+   * targets, matching the former standalone structure inspector.
+   */
+  function isDocumentNavigationNode(node: SnapshotNode): boolean {
+    if (!rootNode) return false;
+    if (node.id === rootNode.id) return true;
+    return (
+      node.type === 'Page' &&
+      rootNode.children.includes(node) &&
+      rootNode.sourceId !== undefined &&
+      node.sourceId === rootNode.sourceId
+    );
+  }
 
   // ── Severity helpers ───────────────────────────────────────────────────────
 
@@ -169,6 +185,17 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
 
   function select(node: SnapshotNode, revealRow = false): void {
     if (!ctx) return;
+    if (isDocumentNavigationNode(node)) {
+      selectedId = null;
+      for (const row of rowsById.values()) row.setAttribute('aria-selected', 'false');
+      clear(selectionRects);
+      renderDetail(null);
+      if (revealRow) {
+        const row = rowsById.get(node.id);
+        if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
     selectedId = node.id;
     for (const [id, row] of rowsById) row.setAttribute('aria-selected', String(id === node.id));
     paintSelection(node);
@@ -208,9 +235,8 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
   }
 
   /**
-   * Describes where an element sits and how big it is, for the detail pane.
-   * Unlike the structure view, compliance rows stay geometry-free — severity and
-   * role are what the tree is for — so this is the one place size appears.
+   * Describes where an element sits and how big it is for the detail pane. Tree
+   * rows carry the compact size; the detail adds page location and point units.
    */
   function describeGeometry(node: SnapshotNode): string {
     const r = node.rects[0];
@@ -221,9 +247,18 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
     return `${pageText} · ${Math.round(r.width)}×${Math.round(r.height)} pt`;
   }
 
+  /** Compact row geometry retained from the former structure inspector. */
+  function formatSize(node: SnapshotNode): string {
+    const r = node.rects[0];
+    if (!r) return '';
+    let size = `${Math.round(r.width)}×${Math.round(r.height)}`;
+    if (node.rects.length > 1) size += ` · ${node.rects.length}p`;
+    return size;
+  }
+
   // The top call passes role 'tree'; nested calls pass 'group', per the
   // WAI-ARIA tree pattern. Each <li> is presentational so the treeitem button
-  // is owned directly by the tree/group (see structure-view for the rationale).
+  // is owned directly by the tree/group, preserving the WAI-ARIA tree pattern.
   function buildTree(nodes: SnapshotNode[], role: 'tree' | 'group'): HTMLElement {
     const ul = el('ul');
     ul.setAttribute('role', role);
@@ -264,10 +299,16 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
 
       row.append(el('span', 'bpp-tree-type', node.type));
       if (node.name) row.append(el('span', 'bpp-tree-name', node.name));
+      const sizeText = formatSize(node);
+      if (sizeText) {
+        const size = el('span', 'bpp-tree-size', sizeText);
+        size.title = 'width × height in points';
+        row.append(size);
+      }
 
       row.addEventListener('click', event => {
         select(node);
-        emitSelection(node, event.ctrlKey || event.metaKey, 'tree');
+        emitSelection(node, isDocumentNavigationNode(node) || event.ctrlKey || event.metaKey, 'tree');
       });
       row.addEventListener('mouseenter', () => {
         if (selectedId !== node.id) paintSelection(node);
@@ -566,7 +607,7 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
             const node = hitTest(pageIndex, x, y);
             if (node) {
               select(node, /* revealRow */ true);
-              emitSelection(node, event.ctrlKey || event.metaKey, 'page');
+              emitSelection(node, isDocumentNavigationNode(node) || event.ctrlKey || event.metaKey, 'page');
             }
           },
           { signal: clickAbort.signal }

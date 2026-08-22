@@ -47,7 +47,6 @@ state. Use the same key on multiple viewers to share the preference:
 
 ```html
 <bonnie-pdf-previewer
-  structure-view
   compliance-view
   preference-key="my-app-pdf-viewer-layout"
 ></bonnie-pdf-previewer>
@@ -74,11 +73,11 @@ handle.dispose();
 
 `createPreviewer` accepts a `ShadowRoot` or any element. The web component is a thin wrapper that calls it with its own shadow root.
 
-## Structure view (plugin)
+## Accessibility inspector (plugin)
 
 The previewer ships a **plugin system** so optional features layer on without
 touching the core viewer — with no plugins registered, behaviour is exactly as
-documented above. The first-party `structureView()` plugin renders the document's
+documented above. The first-party `complianceView()` plugin renders the document's
 **layout structure tree** in a side panel; selecting a node highlights the
 rectangle(s) that element occupied (one per page it spans) as a translucent
 overlay on top of the SVG. The SVG itself is never modified.
@@ -91,20 +90,20 @@ the deepest node under the cursor in the tree.
 It consumes the layout snapshot from `@bonniepdf/core`:
 
 ```js
-import { createPreviewer, structureView, svgStringsToPages } from '@bonniepdf/previewer';
+import { complianceView, createPreviewer, svgStringsToPages } from '@bonniepdf/previewer';
 
 // Ask core to capture the layout while rendering the SVG:
 const { pages, fontFaceCss, snapshot } =
   await doc.generateSvgDocumentAsync({ captureLayout: true });
 
-const handle = createPreviewer(container, { plugins: [structureView()] });
+const handle = createPreviewer(container, { plugins: [complianceView()] });
 handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
 ```
 
-Web-component opt-in via the boolean `structure-view` attribute:
+Web-component opt-in via the boolean `compliance-view` attribute:
 
 ```html
-<bonnie-pdf-previewer structure-view style="height: 80vh"></bonnie-pdf-previewer>
+<bonnie-pdf-previewer compliance-view style="height: 80vh"></bonnie-pdf-previewer>
 ```
 
 ```js
@@ -114,17 +113,15 @@ el.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
 Writing your own plugin: implement `PreviewerPlugin` (`setup` / `load` / `sync` /
 `teardown`). The host hands you `overlayFor(pageIndex)` (a `pointer-events:none`
 layer that survives the windowed page virtualisation), `addSidePanel`,
-`addToolbarItem`, `scale()`, and `scrollToPage()` — see `src/structure-view.ts`
+`addToolbarItem`, `scale()`, and `scrollToPage()` — see `src/compliance-view.ts`
 for a complete example. `addSidePanel` registers a **tab** in a single shared
 inspector region (multiple panels don't stack); pass `defaultOpen` and an
 `onVisibilityChange(visible)` callback so you can paint/clear overlays when your
 tab becomes the active one, and use the returned `setBadge(text, tone)` to flag
 counts on your tab.
 
-## Compliance view (plugin)
-
-The sibling `complianceView()` plugin turns the same layout snapshot into an
-**accessibility / PDF-UA preflight panel** — a capability no other PDF library
+The inspector also turns the layout snapshot into an **accessibility / PDF-UA
+preflight panel** — a capability no other PDF library
 offers, because BonniePDF *generates* the document and therefore knows the
 semantics of every element at authoring time.
 
@@ -142,8 +139,8 @@ core's `evaluateCompliance(snapshot)`. It then:
 - paints a **severity-tinted overlay over every flagged element on the page** (an
   issues heatmap) so problems are visible on the document, not just in the tree;
 - opens a **detail pane** on selection with each finding's message, the ISO
-  clause citation, and a concrete fix hint. Selection is two-way, exactly like the
-  structure view: click a row or click the element on the page.
+  clause citation, and a concrete fix hint. Selection remains two-way: click a
+  row or click the element on the page.
 
 The flagship check catches the mistake external validators pass silently: an
 image with no alt text is exported as an `/Artifact`, so veraPDF sees a
@@ -167,18 +164,15 @@ const handle = createPreviewer(container, { plugins: [complianceView()] });
 handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
 ```
 
-Web-component opt-in via the boolean `compliance-view` attribute (composable with
-`structure-view`):
+Web-component opt-in via the boolean `compliance-view` attribute:
 
 ```html
-<bonnie-pdf-previewer structure-view compliance-view style="height: 80vh"></bonnie-pdf-previewer>
+<bonnie-pdf-previewer compliance-view style="height: 80vh"></bonnie-pdf-previewer>
 ```
 
-When more than one inspector plugin is registered (e.g. `structure-view` **and**
-`compliance-view`), they share **one** side panel with a tab strip — only one is
-visible at a time, and a single toolbar button toggles the panel. This keeps the
-Structure tree and the Accessibility report from competing for screen space.
-Tabs are ordered alphabetically by their displayed label.
+When more than one custom inspector plugin is registered, they share **one** side
+panel with a tab strip — only one is visible at a time, and a single toolbar
+button toggles the panel. Tabs are ordered alphabetically by displayed label.
 
 ```js
 el.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
@@ -187,6 +181,11 @@ el.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
 With a `snapshot` but no `report`, the panel still shows role/status badges — it
 just omits severities and findings. Options: `complianceView({ label, openByDefault,
 markIssuesOnPage })`.
+
+`structureView()` and the `structure-view` element attribute remain as deprecated
+compatibility aliases for the unified Accessibility inspector. New code should
+use `complianceView()` / `compliance-view`; using both element attributes still
+creates only one inspector.
 
 ## Performance
 

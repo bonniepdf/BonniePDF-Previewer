@@ -38,7 +38,7 @@ export interface PreviewerZoomState {
 // Declared here, not imported, so the previewer stays decoupled from the core
 // package — exactly as it already is for SVG page strings. Any object matching
 // this shape (e.g. the `snapshot` from `generateSvgDocumentAsync({ captureLayout:
-// true })`) drives the structure-view plugin.
+// true })`) drives the accessibility inspector plugin.
 // ---------------------------------------------------------------------------
 
 /** One rectangle an element occupied on a page (top-left origin, PDF points). */
@@ -92,7 +92,7 @@ export interface SnapshotMeta {
   title?: string;
 }
 
-/** The captured layout of a document, as consumed by the structure view. */
+/** The captured layout of a document, as consumed by inspector plugins. */
 export interface LayoutSnapshot {
   version: number;
   pages: { width: number; height: number }[];
@@ -252,7 +252,7 @@ export interface PreviewerViewState {
 
 /** Configuration applied when a previewer is created (chrome / defaults). */
 export interface PreviewerOptions {
-  /** Plugins extending the previewer (e.g. the structure view). Optional. */
+  /** Plugins extending the previewer (e.g. the accessibility inspector). Optional. */
   plugins?: PreviewerPlugin[];
   /**
    * Which built-in toolbar groups to render. Every flag defaults to `true`, so
@@ -304,8 +304,8 @@ export interface LoadOptions {
   downloadFilename?: string;
   /**
    * The layout snapshot for this document (from `generateSvgDocumentAsync({
-   * captureLayout: true })`). Consumed by the structure-view and compliance-view
-   * plugins; ignored when no plugin uses it.
+   * captureLayout: true })`). Consumed by the accessibility inspector; ignored
+   * when no plugin uses it.
    */
   snapshot?: LayoutSnapshot;
   /**

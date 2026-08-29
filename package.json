@@ -3,7 +3,7 @@
   "version": "2026.7.2",
   "description": "Framework-agnostic PDF preview component for BonniePDF — renders the SVG pages from @bonniepdf/core as a paginated, zoomable viewer with thumbnails. Ships as a Shadow-DOM web component, fully isolated from host-page CSS.",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "sideEffects": [
     "./dist/element.js",
     "./dist/element.cjs",

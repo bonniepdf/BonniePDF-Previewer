@@ -37,7 +37,7 @@ viewer.load(svgStringsToPages(pages), {
 
 Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector`
 (`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`),
-`download-filename`, and `label`.
+`download-filename`, `selection-color`, and `label`.
 
 Set `preference-key` to persist thumbnail and inspector visibility plus the
 selected zoom (Fit page, Fit width, or a percentage) in
@@ -65,7 +65,10 @@ closes or the previewer is disposed.
 ```js
 import { createPreviewer, svgStringsToPages } from '@bonniepdf/previewer';
 
-const handle = createPreviewer(container, { fitMode: 'fit-width' });
+const handle = createPreviewer(container, {
+  fitMode: 'fit-width',
+  selectionColor: '#16a34a',
+});
 handle.load(svgStringsToPages(pages), { fontFaceCss });
 // later:
 handle.dispose();
@@ -202,8 +205,16 @@ bonnie-pdf-previewer {
   --bpdf-accent: #16a34a;
   --bpdf-bg-alt: #0b0f17;
   --bpdf-text-1: #e5e7eb;
+  --bpdf-selection: #2563eb;
 }
 ```
+
+`--bpdf-selection` controls the continuous backdrop painted behind selected SVG
+text, including the visual advances occupied by spaces. It defaults to the
+platform-standard `Highlight` system colour. Factory users can set the same
+value with `selectionColor`; web-component users can use the `selection-color`
+attribute. An explicit option or attribute takes precedence over the inherited
+custom property.
 
 ## License
 

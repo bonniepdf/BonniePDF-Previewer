@@ -280,6 +280,12 @@ export interface PreviewerOptions {
   hideBorder?: boolean;
   /** Whether to apply custom styling to scrollbars. Defaults to `false`. */
   styleScrollbars?: boolean;
+  /**
+   * Selection highlight colour as any valid CSS colour. Defaults to the
+   * platform-standard `Highlight` system colour. This takes precedence over
+   * an inherited `--bpdf-selection` custom property.
+   */
+  selectionColor?: string;
 }
 
 /** Per-document data handed to {@link PreviewerHandle.load}. */

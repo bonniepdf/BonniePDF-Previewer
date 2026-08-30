@@ -1,5 +1,6 @@
 import { buildShell, namespaceSvgIds } from './dom';
 import { icon } from './icons';
+import { installSelectionHighlights } from './selection-highlights';
 import type {
   LoadOptions,
   PreviewerHandle,
@@ -115,6 +116,7 @@ export function createPreviewer(
     downloadFilename: options.downloadFilename ?? 'document.pdf',
     hideBorder: options.hideBorder ?? false,
     styleScrollbars: options.styleScrollbars ?? false,
+    selectionColor: options.selectionColor?.trim() || undefined,
     toolbar: {
       thumbnails: options.toolbar?.thumbnails ?? true,
       pageNav: options.toolbar?.pageNav ?? true,
@@ -125,6 +127,13 @@ export function createPreviewer(
   };
 
   buildShell(container, opts);
+
+  // Keep the public option on the internal shell rather than mutating the host:
+  // light-DOM factory instances and reconnecting custom elements then behave
+  // identically, while an explicit option still wins over inherited theming.
+  if (opts.selectionColor) {
+    container.querySelector<HTMLElement>('.bpp')?.style.setProperty('--bpdf-selection', opts.selectionColor);
+  }
 
   const hostEl = container instanceof ShadowRoot ? (container.host as HTMLElement) : container;
   const ownerDoc = hostEl.ownerDocument;
@@ -508,6 +517,12 @@ export function createPreviewer(
 
     observeLazyMount(pageCanvases, svgFor, i => `p${i}-`, scroll, PAGE_MOUNT_MARGIN);
     observeLazyMount(thumbCanvases, svgFor, i => `t${i}-`, thumbsNav, THUMB_MOUNT_MARGIN, /* decorative */ true);
+    const selectionHighlights = installSelectionHighlights({
+      root: container,
+      ownerDocument: ownerDoc,
+      pageElements: pageEls,
+      signal,
+    });
 
     // ── Viewer state ─────────────────────────────────────────────────────────
     let fitMode: 'fit-page' | 'fit-width' | 'custom' = viewZoom.mode;
@@ -581,6 +596,7 @@ export function createPreviewer(
         el.style.width = `${page.width * scale}px`;
         el.style.height = `${page.height * scale}px`;
       });
+      selectionHighlights.refresh();
       syncToolbar(scale);
       // Notify plugins so overlays can re-scale with the page.
       for (const plugin of plugins) {

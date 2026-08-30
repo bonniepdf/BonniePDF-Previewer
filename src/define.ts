@@ -26,7 +26,7 @@ import type {
  *
  * Configuration is read from attributes: `show-thumbnails` (`"false"` to hide),
  * `show-inspector`, `preference-key`, `fit-mode` (`fit-page` | `fit-width`),
- * `download-filename`, and `label`.
+ * `download-filename`, `selection-color`, and `label`.
  *
  * Individual built-in toolbar groups can be dropped (each defaults to shown) via
  * `show-page-nav`, `show-zoom`, `show-fullscreen`, `show-download`, and
@@ -91,6 +91,7 @@ export class BonniePdfPreviewerElement extends HTMLElement {
       downloadFilename: this.getAttribute('download-filename') ?? undefined,
       hideBorder: this.getAttribute('hide-border') === 'true',
       styleScrollbars: this.getAttribute('style-scrollbars') === 'true',
+      selectionColor: this.getAttribute('selection-color') ?? undefined,
     };
   }
 

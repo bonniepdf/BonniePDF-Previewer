@@ -209,8 +209,30 @@ export const STYLES = /* css */ `
      virtualisation on top of the JS mount/unmount. */
   content-visibility: auto;
 }
-.bpp-page-canvas { position: absolute; inset: 0; }
+.bpp-page-canvas { position: absolute; inset: 0; z-index: 0; }
 .bpp-page svg { display: block; width: 100%; height: 100%; }
+
+/* Chromium paints native SVG selection around glyph cells and leaves the
+   advances occupied by spaces uncoloured. A measured overlay fills those gaps;
+   the native background is made transparent while its selected foreground is
+   retained. The overlay is inert and remains below inspector highlights. */
+.bpp-page-canvas svg text::selection {
+  background-color: transparent;
+  color: inherit;
+  fill: inherit;
+}
+.bpp-selection-layer {
+  position: absolute; inset: 0; overflow: hidden;
+  pointer-events: none; z-index: 1;
+}
+.bpp-selection-rect {
+  position: absolute; display: block;
+  background: var(--bpdf-selection, Highlight); opacity: 0.45;
+}
+@media (forced-colors: active) {
+  .bpp-page-canvas svg text::selection { color: HighlightText; fill: HighlightText; }
+  .bpp-selection-rect { opacity: 1; }
+}
 
 /* ── Plugin overlays (inspector highlights) ───────────────────────────────── */
 .bpp-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }

@@ -72,6 +72,17 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
+  it('configures the selection colour through the factory option', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const handle = createPreviewer(host, { selectionColor: '#5f7f3c' });
+
+    expect(host.querySelector<HTMLElement>('.bpp')?.style.getPropertyValue('--bpdf-selection')).toBe('#5f7f3c');
+
+    handle.dispose();
+    host.remove();
+  });
+
   it('toggles the previewer full-screen viewport mode', () => {
     const host = document.createElement('div');
     const showPopover = vi.fn();
@@ -536,6 +547,22 @@ describe('previewer plugin host', () => {
     expect(root.querySelector('[data-fullscreen]')).toBeNull();
     expect(root.querySelector('[data-download]')).toBeNull();
     expect(root.querySelector('[data-zoom-select]')).toBeTruthy();
+
+    element.remove();
+  });
+
+  it('reads the selection colour from the custom-element attribute', () => {
+    const tagName = 'bonnie-pdf-previewer-selection-colour-test';
+    if (!customElements.get(tagName)) {
+      customElements.define(tagName, class extends BonniePdfPreviewerElement {});
+    }
+    const element = document.createElement(tagName) as BonniePdfPreviewerElement;
+    element.setAttribute('selection-color', 'var(--app-selection)');
+    document.body.append(element);
+
+    expect(element.shadowRoot?.querySelector<HTMLElement>('.bpp')?.style.getPropertyValue('--bpdf-selection')).toBe(
+      'var(--app-selection)',
+    );
 
     element.remove();
   });

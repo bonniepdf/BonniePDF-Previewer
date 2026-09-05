@@ -464,8 +464,10 @@ export const STYLES = /* css */ `
 .bpp-cv-sel-info { background: color-mix(in srgb, var(--_sev-info) 18%, transparent); border-color: var(--_sev-info); }
 
 /* ── Custom Scrollbars ───────────────────────────────────────────────────── */
-.bpp-styled-scrollbars .bpp-thumbs,
-.bpp-styled-scrollbars .bpp-scroll {
+/* scrollbar-color is inherited. Set it on the previewer root so nested plugin
+   scrollers (such as the accessibility inspector) cannot inherit the host
+   document's scrollbar theme through the shadow host. */
+.bpp-styled-scrollbars {
   scrollbar-color: var(--_divider) transparent;
 }
 `;

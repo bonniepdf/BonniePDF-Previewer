@@ -341,11 +341,30 @@ export const STYLES = /* css */ `
   background: color-mix(in srgb, var(--_brand) 16%, transparent);
   color: var(--_text-1); font-weight: 600;
 }
+.bpp-tree-row:focus-visible {
+  outline: 2px solid var(--_brand); outline-offset: -2px;
+}
 .bpp-tree-type { color: var(--_text-1); }
-.bpp-tree-name { color: var(--_text-3); font-style: italic; }
-.bpp-tree-size {
-  margin-left: auto; padding-left: 8px;
-  color: var(--_text-3); font-variant-numeric: tabular-nums; white-space: nowrap;
+.bpp-tree-name {
+  color: var(--_text-3); font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Expand/collapse affordance: a CSS triangle that rotates, so no icon asset and
+   no extra DOM. Leaves keep the box for alignment but draw nothing. */
+.bpp-tree-twisty {
+  flex: 0 0 auto; width: 10px; height: 10px; position: relative;
+}
+.bpp-tree-twisty::before {
+  content: ''; position: absolute; left: 2px; top: 1px;
+  border: 4px solid transparent; border-left-color: var(--_text-3);
+  transition: transform 0.12s ease;
+}
+.bpp-tree-row[aria-expanded="true"] > .bpp-tree-twisty::before {
+  transform: rotate(90deg); transform-origin: 2px 4px;
+}
+.bpp-tree-twisty-leaf::before { content: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bpp-tree-twisty::before { transition: none; }
 }
 
 /* ── Loading overlay ─────────────────────────────────────────────────────── */
@@ -366,11 +385,13 @@ export const STYLES = /* css */ `
 /* ── Compliance view plugin ──────────────────────────────────────────────── */
 .bpp-cv-host { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 
-/* Summary block. */
+/* Summary block: fixed height on both tabs, so it never squeezes the tree. */
 .bpp-cv-summary {
+  flex: 0 0 auto;
   padding: 10px 12px; border-bottom: 1px solid var(--_divider);
   display: flex; flex-direction: column; gap: 8px;
 }
+.bpp-cv-header { display: flex; flex-direction: column; gap: 8px; }
 .bpp-cv-pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .bpp-cv-pill {
   padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
@@ -385,12 +406,44 @@ export const STYLES = /* css */ `
 .bpp-cv-verdict-fail { color: var(--_sev-error); }
 .bpp-cv-filter { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--_text-2); cursor: pointer; }
 
+/* Settings row: the finding filters, then the tree's expand/collapse actions. */
+.bpp-cv-settings { display: flex; flex-direction: column; gap: 6px; }
+.bpp-cv-filters { display: flex; flex-direction: column; gap: 4px; }
+.bpp-cv-tree-actions { display: flex; gap: 6px; }
+.bpp-cv-action {
+  padding: 2px 8px; border: 1px solid var(--_divider); border-radius: 5px;
+  background: none; color: var(--_text-2); font: inherit; font-size: 0.6875rem;
+  cursor: pointer;
+}
+.bpp-cv-action:hover { background: var(--_brand-soft); color: var(--_text-1); }
+.bpp-cv-action:focus-visible { outline: 2px solid var(--_brand); outline-offset: 1px; }
+
 /* Section titles. */
 .bpp-cv-section-title {
   font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--_text-3); font-weight: 700; padding: 8px 12px 4px;
 }
-.bpp-cv-doc-findings { display: flex; flex-direction: column; gap: 6px; }
+
+/* Findings tab. The list scrolls on its own so it can be any length without
+   competing with the tree, which lives on the other tab. */
+.bpp-cv-issues { overflow: hidden; }
+.bpp-cv-issues-head {
+  flex: 0 0 auto; padding: 10px 12px; border-bottom: 1px solid var(--_divider);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.bpp-cv-issues-list {
+  flex: 1 1 auto; overflow: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px;
+}
+.bpp-cv-issues-group { display: flex; flex-direction: column; gap: 6px; }
+.bpp-cv-scope {
+  align-self: flex-start; padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--_divider); color: var(--_text-3); font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
+}
+.bpp-cv-finding-where { margin: 0; font-size: 0.75rem; }
+.bpp-cv-finding-el { color: var(--_text-1); font-weight: 600; }
+.bpp-cv-finding-page { color: var(--_text-3); font-variant-numeric: tabular-nums; }
 
 /* Tree area (scrolls). */
 .bpp-cv-tree-host { flex: 1 1 auto; overflow: auto; min-height: 60px; }
@@ -422,6 +475,7 @@ export const STYLES = /* css */ `
 .bpp-cv-detail-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
 .bpp-cv-detail-head { display: flex; align-items: center; gap: 6px; padding: 0 12px 6px; }
 .bpp-cv-detail-type { font-weight: 700; color: var(--_text-1); font-size: 0.8125rem; }
+.bpp-cv-detail-name { color: var(--_text-3); font-size: 0.8125rem; font-style: italic; }
 .bpp-cv-geom { margin: 0 12px 4px; font-size: 0.75rem; color: var(--_text-3); font-variant-numeric: tabular-nums; }
 .bpp-cv-attr { margin: 0 12px; font-size: 0.75rem; color: var(--_text-2); font-style: italic; }
 .bpp-cv-empty { padding: 4px 12px; font-size: 0.75rem; color: var(--_text-3); }
@@ -431,6 +485,7 @@ export const STYLES = /* css */ `
   border: 1px solid var(--_divider); border-left-width: 3px; border-radius: var(--_radius-sm);
   padding: 8px 10px; background: var(--_bg); display: flex; flex-direction: column; gap: 5px;
 }
+.bpp-cv-issues-group .bpp-cv-finding { margin: 0 12px; }
 .bpp-cv-finding-error { border-left-color: var(--_sev-error); }
 .bpp-cv-finding-warning { border-left-color: var(--_sev-warning); }
 .bpp-cv-finding-info { border-left-color: var(--_sev-info); }

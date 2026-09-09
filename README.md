@@ -85,10 +85,12 @@ documented above. The first-party `complianceView()` plugin renders the document
 rectangle(s) that element occupied (one per page it spans) as a translucent
 overlay on top of the SVG. The SVG itself is never modified.
 
-Each tree row shows the element's size (width × height in points; a `· Np`
-suffix marks nodes that span multiple pages). Selection is **two-way**: click a
-row to highlight it on the page, or click an element **on the page** to select
-the deepest node under the cursor in the tree.
+The tree expands and collapses per node, and each row shows what the element
+**is** — its type, name, structure role, and severity. Its geometry (page span,
+size in points, origin) appears in the detail pane when you select it, where
+there is room to state it in full. Selection is **two-way**: click a row to
+highlight it on the page, or click an element **on the page** to select the
+deepest node under the cursor in the tree.
 
 It consumes the layout snapshot from `@bonniepdf/core`:
 
@@ -132,13 +134,25 @@ It reads the enriched snapshot (each node carries an `a11y` block: role, tagged 
 artifact, alt text, heading level) plus an optional **compliance report** from
 core's `evaluateCompliance(snapshot)`. It then:
 
+- renders the layout as an **expandable tree** (WAI-ARIA tree pattern: one tab
+  stop, arrow-key navigation, `←`/`→` to collapse/expand, `*` to expand
+  everything, plus Expand-all / Collapse-all buttons). It opens **fully** by
+  default — pass `defaultExpandDepth` to open only the top levels instead, in
+  which case any branch containing an error is still expanded;
 - tags every tree row with its **role chip** (`H1`, `Figure`, `TH`, …) and a
   **severity dot** (red = error, amber = warning, blue = info, green = tagged OK,
-  dashed = artifact);
+  dashed = artifact). Rows carry identity only — geometry belongs to the detail
+  pane, which has room to state the page span, size, and origin in full;
 - shows a **summary** — pass/fail verdict against PDF/UA-1 and error/warning/info
-  counts — with a "show only elements with issues" filter, a count badge on its
-  tab, and a dot on the shared toolbar toggle so issues are visible even while the
-  panel is collapsed;
+  counts — with a "show only elements with issues" filter and an **"include WCAG
+  contrast checks"** switch. The summary is fixed-height by design;
+- puts every **finding on its own `Issues` tab**, grouped errors → warnings →
+  info, each naming its element and page with a "Go to element" button that
+  switches back to the tree and selects it. Findings are unbounded — a
+  colour-rich document can carry hundreds — so they get their own scroll region
+  instead of pushing the tree off the bottom of the panel. The tab carries the
+  count badge, and contributes a dot to the shared toolbar toggle so issues are
+  visible even while the panel is collapsed;
 - paints a **severity-tinted overlay over every flagged element on the page** (an
   issues heatmap) so problems are visible on the document, not just in the tree;
 - opens a **detail pane** on selection with each finding's message, the ISO
@@ -181,9 +195,36 @@ button toggles the panel. Tabs are ordered alphabetically by displayed label.
 el.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
 ```
 
+The inspector registers **two** tabs of its own — `Accessibility` (the tree) and
+`Issues` (the findings) — which share one selection, one filter state, and one
+on-page overlay; switching between them does not disturb the highlights.
+
 With a `snapshot` but no `report`, the panel still shows role/status badges — it
-just omits severities and findings. Options: `complianceView({ label, openByDefault,
-markIssuesOnPage })`.
+just omits severities and findings. Options: `complianceView({ label, issuesLabel,
+openByDefault, markIssuesOnPage, showWcagChecks, onlyIssues, defaultExpandDepth,
+preferenceKey })`.
+
+### WCAG contrast checks
+
+PDF/UA-1 sets **no numeric contrast requirement** — ISO 14289-1 §7.1 only forbids
+conveying information by contrast or colour alone. Core's contrast findings
+therefore cite WCAG 2.2 SC 1.4.3, a standard an author may be tracking separately,
+on a different schedule, or not at all — and on a colour-rich document they can
+outnumber the structural findings and bury them.
+
+So they are switchable, in both places it makes sense:
+
+- **In the viewer** — the "Include WCAG contrast checks" switch in the panel, its
+  initial state set by `complianceView({ showWcagChecks: false })` or the
+  `wcag-checks="false"` attribute. Turning it off removes those findings from the
+  tree, the counts, the tab badge, the detail pane, and the on-page markers. The
+  PDF/UA-1 verdict never moves — no WCAG finding is an error.
+- **In the library** — `evaluateCompliance(snapshot, { includeWcag: false })`
+  (`CompliancePreflight.Evaluate(snapshot, new CompliancePreflightOptions { IncludeWcag = false })`
+  in .NET), which never runs the rules at all.
+
+Give the plugin a `preferenceKey` and its two filter switches persist across
+reloads; the element wires this to its own `preference-key` automatically.
 
 `structureView()` and the `structure-view` element attribute remain as deprecated
 compatibility aliases for the unified Accessibility inspector. New code should

@@ -28,6 +28,10 @@ import type {
  * `show-inspector`, `preference-key`, `fit-mode` (`fit-page` | `fit-width`),
  * `download-filename`, `selection-color`, and `label`.
  *
+ * The accessibility inspector is opted into with `compliance-view`; add
+ * `wcag-checks="false"` to start it with the WCAG 2.2 contrast findings hidden
+ * (the user can turn them back on in the panel).
+ *
  * Individual built-in toolbar groups can be dropped (each defaults to shown) via
  * `show-page-nav`, `show-zoom`, `show-fullscreen`, `show-download`, and
  * `show-thumbnails-toggle`, each set to `"false"` to hide that group.
@@ -77,7 +81,15 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     // unified Accessibility inspector when either (or both) attributes appear.
     const plugins: PreviewerPlugin[] = [];
     if (this.hasAttribute('compliance-view') || this.hasAttribute('structure-view')) {
-      plugins.push(complianceView());
+      const wcag = this.getAttribute('wcag-checks');
+      plugins.push(
+        complianceView({
+          showWcagChecks: wcag === null ? undefined : wcag !== 'false',
+          // The panel's own filters persist beside the host's view state rather
+          // than inside it: they belong to the inspector, not to the chrome.
+          preferenceKey: preferenceKey ? `${preferenceKey}:a11y` : undefined,
+        })
+      );
     }
     return {
       plugins: plugins.length > 0 ? plugins : undefined,

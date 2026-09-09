@@ -233,19 +233,23 @@ describe('previewer plugin host', () => {
     host.remove();
   });
 
-  it('accessibility view shows each node size, with a page-span suffix for multi-page nodes', () => {
+  it('geometry lives in the detail pane, not on tree rows', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const handle = createPreviewer(host, { plugins: [complianceView()] });
+    const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
-    const sizes = Array.from(host.querySelectorAll('.bpp-tree-size')).map(s => s.textContent);
-    // TextBlock: single rect 180×20. Page: 180×280 first rect, spans 2 pages.
-    expect(sizes).toContain('180×20');
-    expect(sizes).toContain('180×280 · 2p');
-    // Document has no rect → no size cell.
-    const docRow = host.querySelector('.bpp-tree-row');
-    expect(docRow?.querySelector('.bpp-tree-size')).toBeNull();
+    // Rows carry identity only — no geometry column.
+    expect(host.querySelectorAll('.bpp-tree-size').length).toBe(0);
+
+    // Selecting the multi-page Page node states page span, size, and origin.
+    const rows = host.querySelectorAll<HTMLButtonElement>('.bpp-tree-row');
+    rows[1].click();
+    const geometry = host.querySelector('.bpp-cv-geom')?.textContent ?? '';
+    expect(geometry).toContain('Pages 1–2');
+    expect(geometry).toContain('180×280 pt');
+    expect(geometry).toContain('at 10, 10');
+    expect(geometry).toContain('2 fragments');
 
     handle.dispose();
     host.remove();
@@ -363,16 +367,18 @@ describe('previewer plugin host', () => {
     });
     handle.load(pages(2), { snapshot: snapshotFor2Pages() });
 
-    // Exactly one side region, with a two-tab strip.
+    // Exactly one side region. The inspector contributes two tabs of its own
+    // (structure and findings), so with the layout plugin that is three.
     expect(host.querySelectorAll('.bpp-side')).toHaveLength(1);
     const tabs = host.querySelectorAll('.bpp-side-tab');
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(3);
     expect(host.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(false);
 
     const layoutPanel = host.querySelector<HTMLElement>('[data-side-panel="layout"]')!;
     const compliancePanel = host.querySelector<HTMLElement>('[data-side-panel="compliance"]')!;
     expect(Array.from(tabs).map(tab => tab.querySelector('.bpp-side-tab-label')?.textContent)).toEqual([
       'Accessibility',
+      'Issues',
       'Layout',
     ]);
 
@@ -454,7 +460,10 @@ describe('previewer plugin host', () => {
     // The deprecated structure attribute aliases Accessibility; both together
     // must still register only one inspector.
     expect(element.shadowRoot?.querySelectorAll('[data-side-panel="compliance"]')).toHaveLength(1);
-    expect(element.shadowRoot?.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(true);
+    // One inspector, but two tabs of its own (structure and findings), so the
+    // tab strip shows.
+    expect(element.shadowRoot?.querySelectorAll('[data-side-panel="compliance-issues"]')).toHaveLength(1);
+    expect(element.shadowRoot?.querySelector('.bpp-side-tabs')?.hasAttribute('hidden')).toBe(false);
 
     expect(element.shadowRoot?.querySelector<HTMLElement>('[data-thumbs]')?.hidden).toBe(true);
     expect(element.shadowRoot?.querySelector<HTMLElement>('.bpp-side')?.hidden).toBe(true);

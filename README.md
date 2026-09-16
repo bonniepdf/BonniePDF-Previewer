@@ -259,4 +259,8 @@ custom property.
 
 ## License
 
-MIT
+`@bonniepdf/previewer` is licensed under the [MIT License](./LICENSE).
+
+The previewer does not grant rights to `@bonniepdf/core`. Documents it renders
+are produced by your own copy of the core library, which remains subject to the
+licence bundled with that package.

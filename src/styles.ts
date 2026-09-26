@@ -385,6 +385,48 @@ export const STYLES = /* css */ `
   .bpp-tree-twisty::before { transition: none; }
 }
 
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+/* Slim bar under the page area: host text left, document conformance pills
+   right. Rendered only when the host opts in via the footer option. */
+.bpp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  min-height: 34px;
+  padding: 0.25rem 12px;
+  flex-shrink: 0;
+  background: var(--_bg-soft);
+  border-top: 1px solid var(--_divider);
+  font-size: 0.75rem;
+  color: var(--_text-3);
+}
+.bpp-footer-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bpp-footer-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.bpp-footer-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--_brand);
+  background: var(--_brand-soft);
+  white-space: nowrap;
+}
+
 /* ── Loading overlay ─────────────────────────────────────────────────────── */
 .bpp-loading {
   position: absolute; inset: 0; z-index: 6;

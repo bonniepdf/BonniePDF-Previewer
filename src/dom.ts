@@ -1,6 +1,6 @@
 import { icon } from './icons';
 import { STYLES } from './styles';
-import type { PreviewerOptions, ToolbarConfig } from './types';
+import type { FooterConfig, PreviewerOptions, ToolbarConfig } from './types';
 
 /**
  * Rewrites every `id` (and matching `url(#…)` / `href="#…"` reference) in an SVG
@@ -17,13 +17,14 @@ export function namespaceSvgIds(svg: string, prefix: string): string {
     .replace(/\b(xlink:href|href)="#([^"]+)"/g, (_, attr, id) => `${attr}="#${prefix}${id}"`);
 }
 
-/** Builds the previewer chrome (stylesheet + toolbar + empty body + overlay) into
- * the given root. Page/thumbnail content is mounted later by the controller. */
+/** Builds the previewer chrome (stylesheet + toolbar + empty body + footer +
+ * loading overlay) into the given root. Page/thumbnail content is mounted later
+ * by the controller. */
 export function buildShell(
   root: ShadowRoot | HTMLElement,
   opts: Required<
     Pick<PreviewerOptions, 'showThumbnails' | 'hideBorder' | 'styleScrollbars' | 'title' | 'fitMode'>
-  > & { toolbar: Required<ToolbarConfig> },
+  > & { toolbar: Required<ToolbarConfig>; footer?: { text: string } },
 ): void {
   const showThumbs = opts.showThumbnails;
   const tb = opts.toolbar;
@@ -116,6 +117,7 @@ export function buildShell(
       <div class="bpp-pages" data-pages></div>
     </div>
   </div>
+  ${footerMarkup(opts.footer)}
   <div class="bpp-loading" data-loading role="status" aria-live="polite">
     <span class="bpp-spinner" aria-hidden="true"></span>
     <span>Generating preview…</span>
@@ -125,4 +127,14 @@ export function buildShell(
 
 function escapeAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** The footer bar's markup. The tag list starts empty — the controller fills it
+ * from each loaded document's snapshot metadata. */
+function footerMarkup(footer: { text: string } | undefined): string {
+  if (!footer) return '';
+  return `<footer class="bpp-footer" data-footer aria-label="Document conformance">
+    <span class="bpp-footer-text">${escapeAttr(footer.text)}</span>
+    <div class="bpp-footer-tags" data-footer-tags></div>
+  </footer>`;
 }

@@ -17,6 +17,7 @@ export type {
   PreviewerZoomState,
   PreviewerOptions,
   ToolbarConfig,
+  FooterConfig,
   LoadOptions,
   PreviewerHandle,
   PreviewerPlugin,

@@ -14,8 +14,8 @@ export const STYLES = /* css */ `
   --_bg: var(--bpdf-bg, #ffffff);
   --_bg-alt: var(--bpdf-bg-alt, #f1f5f9);
   --_bg-soft: var(--bpdf-bg-soft, #f8fafc);
-  --_brand: var(--bpdf-brand-2, #2563eb);
-  --_brand-soft: var(--bpdf-brand-soft, #dbeafe);
+  --_brand: var(--bpdf-brand-2, #007acc);
+  --_brand-soft: var(--bpdf-brand-soft, rgba(0, 122, 204, 0.08));
   --_text-1: var(--bpdf-text-1, #0f172a);
   --_text-2: var(--bpdf-text-2, #475569);
   --_text-3: var(--bpdf-text-3, #94a3b8);
@@ -167,6 +167,24 @@ export const STYLES = /* css */ `
 @container (max-width: 640px) {
   .bpp-btn-label { display: none; }
   .bpp-btn-download { padding: 0 6px; }
+}
+
+/* Narrow containers (phones): the controls no longer fit on one row, so the
+   toolbar wraps instead of clipping them. Separators are dropped because they
+   would otherwise start or end a wrapped row. */
+@container (max-width: 560px) {
+  .bpp-toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    height: auto;
+    min-height: 48px;
+    padding: 6px 8px;
+    row-gap: 4px;
+  }
+  .bpp-sep { display: none; }
+  .bpp-group-end { margin-left: 0; }
+  .bpp-group-end:empty { display: none; }
+  .bpp-zoom { min-width: 0; }
 }
 
 /* ── Body / thumbnails / pages ───────────────────────────────────────────── */

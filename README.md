@@ -1,12 +1,12 @@
 # @bonniepdf/previewer
 
-A framework-agnostic PDF preview component for [BonniePDF](https://www.bonniepdf.dev). It renders the **SVG pages** produced by `@bonniepdf/core` as a paginated, zoomable viewer with a thumbnail rail, page navigation, and a lazy "Download PDF" action. This is the component that https://bonniepdf.dev uses on it's example pages.
+A framework-agnostic PDF preview component for [BonniePDF](https://www.bonniepdf.dev). It renders SVG pages produced by `@bonniepdf/core` as a paginated, zoomable viewer with a thumbnail rail, page navigation, and a lazy "Download PDF" action. Used on the bonniepdf.dev example pages.
 
-It ships as a **Shadow-DOM web component**, so the viewer is completely isolated from the host page's CSS. Embedded fonts always render correctly and there are no id collisions between instances.
+It ships as a Shadow-DOM web component, isolating the viewer from the host page's CSS. Embedded fonts render correctly and prevent ID collisions between instances.
 
-## Why SVG, not a canvas/WASM renderer
+## Why SVG over a canvas/WASM renderer
 
-BonniePDF generates the preview as vector SVG (one `<text>` per run, glyphs positioned by the font's real advance widths), so the preview is crisp at any zoom and needs no PDF rendering engine on the page. This component only *consumes* those SVG strings. It knows nothing about PDF generation.
+BonniePDF generates previews as vector SVGs (one `<text>` per run, glyphs positioned by font advance widths). The preview maintains resolution at any zoom level and requires no PDF rendering engine on the page. The component consumes SVG strings and does not generate PDFs.
 
 ## Install
 
@@ -35,16 +35,9 @@ viewer.load(svgStringsToPages(pages), {
 <bonnie-pdf-previewer style="height: 80vh" label="Quarterly report"></bonnie-pdf-previewer>
 ```
 
-Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector`
-(`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`),
-`download-filename`, `selection-color`, and `label`. Set the `footer` attribute
-to render a footer bar below the pages (see [Footer](#footer)).
+Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector` (`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`), `download-filename`, `selection-color`, and `label`. Set `footer` to render a footer bar (see [Footer](#footer)).
 
-Set `preference-key` to persist thumbnail and inspector visibility plus the
-selected zoom (Fit page, Fit width, or a percentage) in
-`localStorage`. The saved state is read synchronously before the shadow DOM is
-built, so returning visitors do not see the panels flash through their default
-state. Use the same key on multiple viewers to share the preference:
+Set `preference-key` to persist thumbnail visibility, inspector visibility, and the selected zoom level in `localStorage`. This state is read synchronously before the shadow DOM builds, preventing layout shifts. Share this key across multiple viewers to sync preferences:
 
 ```html
 <bonnie-pdf-previewer
@@ -53,13 +46,7 @@ state. Use the same key on multiple viewers to share the preference:
 ></bonnie-pdf-previewer>
 ```
 
-Entering fullscreen temporarily switches the document to Fit page so it remains
-comfortably sized on large monitors. Leaving fullscreen restores the previous
-zoom unless the user selected a different zoom while fullscreen. The control
-also expands to show “Exit Fullscreen” while active. While fullscreen is open,
-the previewer locks scrolling and releases any reserved scrollbar gutter on its
-owning document, then restores the host page's previous styles when fullscreen
-closes or the previewer is disposed.
+Entering fullscreen temporarily switches the document to Fit Page. Leaving fullscreen restores the previous zoom unless changed by the user while in fullscreen. The control displays “Exit Fullscreen” when active. During fullscreen, the previewer locks scrolling, releases reserved scrollbar gutters on the document, and restores host styles upon closing or disposal.
 
 ## Usage — factory (any framework / light DOM)
 
@@ -75,23 +62,13 @@ handle.load(svgStringsToPages(pages), { fontFaceCss });
 handle.dispose();
 ```
 
-`createPreviewer` accepts a `ShadowRoot` or any element. The web component is a thin wrapper that calls it with its own shadow root.
+`createPreviewer` accepts a `ShadowRoot` or any element. The web component acts as a wrapper that calls this factory with its own shadow root.
 
 ## Accessibility inspector (plugin)
 
-The previewer ships a **plugin system** so optional features layer on without
-touching the core viewer — with no plugins registered, behaviour is exactly as
-documented above. The first-party `complianceView()` plugin renders the document's
-**layout structure tree** in a side panel; selecting a node highlights the
-rectangle(s) that element occupied (one per page it spans) as a translucent
-overlay on top of the SVG. The SVG itself is never modified.
+The previewer includes a plugin system. The `complianceView()` plugin renders the document's layout structure tree in a side panel. Selecting a node highlights the corresponding rectangle(s) as a translucent overlay on the SVG. The SVG remains unmodified.
 
-The tree expands and collapses per node, and each row shows what the element
-**is** — its type, name, structure role, and severity. Its geometry (page span,
-size in points, origin) appears in the detail pane when you select it, where
-there is room to state it in full. Selection is **two-way**: click a row to
-highlight it on the page, or click an element **on the page** to select the
-deepest node under the cursor in the tree.
+The tree expands and collapses per node. Each row displays the element type, name, structure role, and severity. Geometry details (page span, size in points, origin) appear in the detail pane upon selection. Selection is bidirectional: click a row to highlight the page element, or click an element on the page to select its deepest node in the tree.
 
 It consumes the layout snapshot from `@bonniepdf/core`:
 
@@ -106,189 +83,46 @@ const handle = createPreviewer(container, { plugins: [complianceView()] });
 handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
 ```
 
-Web-component opt-in via the boolean `compliance-view` attribute:
+Web-component opt-in via the `compliance-view` attribute:
 
 ```html
 <bonnie-pdf-previewer compliance-view style="height: 80vh"></bonnie-pdf-previewer>
 ```
 
-```js
-el.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
-```
+To write a plugin: implement `PreviewerPlugin` (`setup` / `load` / `sync` / `teardown`). The host provides `overlayFor(pageIndex)` (a `pointer-events:none` layer), `addSidePanel`, `addToolbarItem`, `scale()`, and `scrollToPage()`. See `src/compliance-view.ts` for an example. `addSidePanel` registers a tab in a shared inspector region. Pass `defaultOpen` and an `onVisibilityChange(visible)` callback to manage overlays, and use `setBadge(text, tone)` for tab counts.
 
-Writing your own plugin: implement `PreviewerPlugin` (`setup` / `load` / `sync` /
-`teardown`). The host hands you `overlayFor(pageIndex)` (a `pointer-events:none`
-layer that survives the windowed page virtualisation), `addSidePanel`,
-`addToolbarItem`, `scale()`, and `scrollToPage()` — see `src/compliance-view.ts`
-for a complete example. `addSidePanel` registers a **tab** in a single shared
-inspector region (multiple panels don't stack); pass `defaultOpen` and an
-`onVisibilityChange(visible)` callback so you can paint/clear overlays when your
-tab becomes the active one, and use the returned `setBadge(text, tone)` to flag
-counts on your tab.
+The inspector functions as an accessibility/PDF-UA preflight panel. Since BonniePDF generates the document, it retains element semantics from authoring. It reads the enriched snapshot (role, tagged/artifact, alt text, heading level) and an optional compliance report from `evaluateCompliance(snapshot)`. The panel provides:
 
-The inspector also turns the layout snapshot into an **accessibility / PDF-UA
-preflight panel** — a capability no other PDF library
-offers, because BonniePDF *generates* the document and therefore knows the
-semantics of every element at authoring time.
+*   An expandable layout tree (WAI-ARIA tree pattern: single tab stop, arrow navigation, `←`/`→` to collapse/expand, `*` to expand all). Opens fully by default. Use `defaultExpandDepth` to limit initial depth (branches with errors still expand).
+*   Tree rows tagged with a role chip (`H1`, `Figure`, `TH`) and severity dot (red = error, amber = warning, blue = info, green = tagged OK, dashed = artifact).
+*   A summary displaying the PDF/UA-1 verdict and issue counts, featuring a "show only elements with issues" filter and an "include WCAG contrast checks" toggle.
+*   An `Issues` tab grouping findings (errors → warnings → info). Each finding includes the element, page, and a "Go to element" button. Findings scroll independently from the tree.
+*   A severity-tinted overlay indicating flagged elements directly on the document.
+*   A detail pane showing the finding's message, ISO clause citation, and a fix hint.
 
-It reads the enriched snapshot (each node carries an `a11y` block: role, tagged /
-artifact, alt text, heading level) plus an optional **compliance report** from
-core's `evaluateCompliance(snapshot)`. It then:
-
-- renders the layout as an **expandable tree** (WAI-ARIA tree pattern: one tab
-  stop, arrow-key navigation, `←`/`→` to collapse/expand, `*` to expand
-  everything, plus Expand-all / Collapse-all buttons). It opens **fully** by
-  default — pass `defaultExpandDepth` to open only the top levels instead, in
-  which case any branch containing an error is still expanded;
-- tags every tree row with its **role chip** (`H1`, `Figure`, `TH`, …) and a
-  **severity dot** (red = error, amber = warning, blue = info, green = tagged OK,
-  dashed = artifact). Rows carry identity only — geometry belongs to the detail
-  pane, which has room to state the page span, size, and origin in full;
-- shows a **summary** — pass/fail verdict against PDF/UA-1 and error/warning/info
-  counts — with a "show only elements with issues" filter and an **"include WCAG
-  contrast checks"** switch. The summary is fixed-height by design;
-- puts every **finding on its own `Issues` tab**, grouped errors → warnings →
-  info, each naming its element and page with a "Go to element" button that
-  switches back to the tree and selects it. Findings are unbounded — a
-  colour-rich document can carry hundreds — so they get their own scroll region
-  instead of pushing the tree off the bottom of the panel. The tab carries the
-  count badge, and contributes a dot to the shared toolbar toggle so issues are
-  visible even while the panel is collapsed;
-- paints a **severity-tinted overlay over every flagged element on the page** (an
-  issues heatmap) so problems are visible on the document, not just in the tree;
-- opens a **detail pane** on selection with each finding's message, the ISO
-  clause citation, and a concrete fix hint. Selection remains two-way: click a
-  row or click the element on the page.
-
-The flagship check catches the mistake external validators pass silently: an
-image with no alt text is exported as an `/Artifact`, so veraPDF sees a
-legitimately untagged artifact — but a screen reader skips it entirely. The
-preflight flags it as an error and tells you to add `altText` (or mark it
-decorative).
-
-```js
-import {
-  createPreviewer,
-  complianceView,
-  svgStringsToPages,
-} from '@bonniepdf/previewer';
-import { evaluateCompliance } from '@bonniepdf/core';
-
-const { pages, fontFaceCss, snapshot } =
-  await doc.generateSvgDocumentAsync({ captureLayout: true });
-const report = evaluateCompliance(snapshot);
-
-const handle = createPreviewer(container, { plugins: [complianceView()] });
-handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
-```
-
-Web-component opt-in via the boolean `compliance-view` attribute:
-
-```html
-<bonnie-pdf-previewer compliance-view style="height: 80vh"></bonnie-pdf-previewer>
-```
-
-When more than one custom inspector plugin is registered, they share **one** side
-panel with a tab strip — only one is visible at a time, and a single toolbar
-button toggles the panel. Tabs are ordered alphabetically by displayed label.
-
-```js
-el.load(svgStringsToPages(pages), { fontFaceCss, snapshot, report });
-```
-
-The inspector registers **two** tabs of its own — `Accessibility` (the tree) and
-`Issues` (the findings) — which share one selection, one filter state, and one
-on-page overlay; switching between them does not disturb the highlights.
-
-With a `snapshot` but no `report`, the panel still shows role/status badges — it
-just omits severities and findings. Options: `complianceView({ label, issuesLabel,
-openByDefault, markIssuesOnPage, showWcagChecks, onlyIssues, defaultExpandDepth,
-preferenceKey })`.
+This check catches issues external validators often miss. For example, an image without alt text exports as an `/Artifact`. While standard validators see a valid untagged artifact, screen readers skip it. The preflight flags this as an error requiring `altText` or decorative marking.
 
 ### WCAG contrast checks
 
-PDF/UA-1 sets **no numeric contrast requirement** — ISO 14289-1 §7.1 only forbids
-conveying information by contrast or colour alone. Core's contrast findings
-therefore cite WCAG 2.2 SC 1.4.3, a standard an author may be tracking separately,
-on a different schedule, or not at all — and on a colour-rich document they can
-outnumber the structural findings and bury them.
+PDF/UA-1 sets no numeric contrast requirement (ISO 14289-1 §7.1 only forbids conveying information by contrast or color alone). Core's contrast findings cite WCAG 2.2 SC 1.4.3. Because documents with multiple colors can produce numerous findings, these checks are toggleable:
 
-So they are switchable, in both places it makes sense:
-
-- **In the viewer** — the "Include WCAG contrast checks" switch in the panel, its
-  initial state set by `complianceView({ showWcagChecks: false })` or the
-  `wcag-checks="false"` attribute. Turning it off removes those findings from the
-  tree, the counts, the tab badge, the detail pane, and the on-page markers. The
-  PDF/UA-1 verdict never moves — no WCAG finding is an error.
-- **In the library** — `evaluateCompliance(snapshot, { includeWcag: false })`
-  (`CompliancePreflight.Evaluate(snapshot, new CompliancePreflightOptions { IncludeWcag = false })`
-  in .NET), which never runs the rules at all.
-
-Give the plugin a `preferenceKey` and its two filter switches persist across
-reloads; the element wires this to its own `preference-key` automatically.
-
-`structureView()` and the `structure-view` element attribute remain as deprecated
-compatibility aliases for the unified Accessibility inspector. New code should
-use `complianceView()` / `compliance-view`; using both element attributes still
-creates only one inspector.
+*   **In the viewer:** The "Include WCAG contrast checks" switch in the panel (initial state set via `complianceView({ showWcagChecks: false })` or `wcag-checks="false"`). Disabling this removes contrast findings from the tree, counts, badges, detail pane, and on-page markers. WCAG findings do not affect the PDF/UA-1 verdict.
+*   **In the library:** `evaluateCompliance(snapshot, { includeWcag: false })` (`CompliancePreflight.Evaluate` in .NET) prevents the rules from running.
 
 ## Footer
 
-An optional footer bar renders under the page area: host-supplied text on the
-left, and conformance pills on the right derived from each loaded document's
-snapshot metadata (the PDF/A conformance level and PDF/UA-1 tagging, e.g.
-`PDF/A-2a` and `PDF/UA-1`).
-
-With the web component, add the `footer` attribute. The left text defaults to
-"Generated by @bonniepdf/previewer" and can be overridden with `footer-label`:
-
-```html
-<bonnie-pdf-previewer footer footer-label="Quarterly report"></bonnie-pdf-previewer>
-```
-
-With the factory, pass a `footer` option:
-
-```js
-const handle = createPreviewer(container, {
-  footer: { text: 'Quarterly report', conformance: false },
-});
-```
-
-Omit `footer` entirely and the previewer renders exactly as it did before the
-option existed. Pills appear only for documents loaded with a layout snapshot
-(`load(pages, { snapshot })`) that declares conformance; documents without a
-snapshot show the footer text alone.
+An optional footer bar renders below the pages, displaying host-supplied text (left) and conformance pills (right) derived from the document's snapshot metadata (e.g., `PDF/A-2a`, `PDF/UA-1`).
 
 ## Performance
 
-- **Windowed virtualisation** — only the pages/thumbnails near the viewport are mounted in the DOM; the rest are kept as lightweight placeholders. A 50-page document keeps ~6 pages live at a time instead of all 50.
-- **Lazy PDF** — the full PDF is generated only when the user clicks Download (via `pdfProvider`), so previewing never pays for it.
-- **Deterministic teardown** — `dispose()` (and the element's `disconnectedCallback`) disconnect every observer and listener.
+*   **Windowed virtualisation:** Mounts only pages/thumbnails near the viewport in the DOM, keeping the rest as placeholders.
+*   **Lazy PDF:** Generates the full PDF only upon clicking Download (via `pdfProvider`).
+*   **Deterministic teardown:** `dispose()` (and `disconnectedCallback`) disconnect all observers and listeners.
 
 ## Theming
 
-Colours resolve `--bpdf-*` custom properties (which pierce the shadow boundary), falling back to a clean light theme. For example:
-
-```css
-bonnie-pdf-previewer {
-  --bpdf-accent: #16a34a;
-  --bpdf-bg-alt: #0b0f17;
-  --bpdf-text-1: #e5e7eb;
-  --bpdf-selection: #2563eb;
-}
-```
-
-`--bpdf-selection` controls the continuous backdrop painted behind selected SVG
-text, including the visual advances occupied by spaces. It defaults to the
-platform-standard `Highlight` system colour. Factory users can set the same
-value with `selectionColor`; web-component users can use the `selection-color`
-attribute. An explicit option or attribute takes precedence over the inherited
-custom property.
+Colors resolve `--bpdf-*` custom properties, falling back to a light theme.
 
 ## License
 
 `@bonniepdf/previewer` is licensed under the [MIT License](./LICENSE).
-
-The previewer does not grant rights to `@bonniepdf/core`. Documents it renders
-are produced by your own copy of the core library, which remains subject to the
-licence bundled with that package.

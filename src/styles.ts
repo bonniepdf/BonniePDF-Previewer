@@ -26,7 +26,7 @@ export const STYLES = /* css */ `
   --_sev-error: var(--bpdf-error, #dc2626);
   --_sev-warning: var(--bpdf-warning, #d97706);
   --_sev-info: var(--bpdf-info, #2563eb);
-  --_sev-ok: var(--bpdf-success, #16a34a);
+  --_sev-ok: var(--bpdf-status-success-text, var(--bpdf-success, #047857));
 
   display: block;
   height: 100%;
@@ -460,7 +460,7 @@ export const STYLES = /* css */ `
 .bpp-cv-pill-error { background: var(--_sev-error); }
 .bpp-cv-pill-warning { background: var(--_sev-warning); }
 .bpp-cv-pill-info { background: var(--_sev-info); }
-.bpp-cv-pill-zero { opacity: 0.4; }
+.bpp-cv-pill-zero { background: var(--_bg-alt); color: var(--_text-2); border: 1px solid var(--_divider); }
 .bpp-cv-verdict { font-size: 0.8125rem; font-weight: 600; }
 .bpp-cv-verdict-pass { color: var(--_sev-ok); }
 .bpp-cv-verdict-fail { color: var(--_sev-error); }

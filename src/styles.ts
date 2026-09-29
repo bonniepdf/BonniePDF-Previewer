@@ -440,6 +440,23 @@ export const STYLES = /* css */ `
   animation: bpp-spin 0.8s linear infinite;
 }
 @keyframes bpp-spin { to { transform: rotate(360deg); } }
+
+/* ── Busy and error states ───────────────────────────────────────────────── */
+.bpp-busy .bpp-pages { opacity: 0.55; transition: opacity 120ms ease; }
+.bpp-error {
+  position: absolute; inset: 0; z-index: 7;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 24px; text-align: center;
+  background: var(--_bg-alt); color: var(--_text-2); font-size: 0.875rem;
+}
+.bpp-error[hidden] { display: none; }
+.bpp-error-title { font-weight: 600; color: var(--_text-1); }
+.bpp-error-detail { color: var(--_text-3); overflow-wrap: anywhere; }
+.bpp-error-detail:empty { display: none; }
+.bpp-error.bpp-error-banner {
+  inset: auto 0 0 0; flex-direction: row; justify-content: flex-start; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--_divider); text-align: left;
+}
 @media (prefers-reduced-motion: reduce) { .bpp-spinner { animation-duration: 2s; } }
 
 /* ── Compliance view plugin ──────────────────────────────────────────────── */

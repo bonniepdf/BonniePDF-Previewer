@@ -998,6 +998,7 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
 
   return {
     name: 'compliance-view',
+    needsLayout: true,
 
     setup(context) {
       ctx = context;

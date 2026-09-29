@@ -14,26 +14,29 @@ BonniePDF generates previews as vector SVGs (one `<text>` per run, glyphs positi
 npm install @bonniepdf/previewer @bonniepdf/core
 ```
 
+`@bonniepdf/core` is an optional peer dependency: you need it to pass a document, and not to show an export generated elsewhere (see [Generating elsewhere](#generating-elsewhere)).
+
 ## Usage — web component
 
 ```js
 import '@bonniepdf/previewer/element'; // registers <bonnie-pdf-previewer>
-import { svgStringsToPages } from '@bonniepdf/previewer';
-
-const { pages, fontFaceCss } = await doc.generateSvgDocumentAsync();
 
 const viewer = document.querySelector('bonnie-pdf-previewer');
-viewer.load(svgStringsToPages(pages), {
-  fontFaceCss,
-  downloadFilename: 'report.pdf',
-  // PDF bytes are generated only if the user clicks Download:
-  pdfProvider: async () => URL.createObjectURL(new Blob([await doc.generateBytesAsync()], { type: 'application/pdf' })),
-});
+await viewer.load(doc); // a @bonniepdf/core Document
 ```
 
 ```html
 <bonnie-pdf-previewer style="height: 80vh" label="Quarterly report"></bonnie-pdf-previewer>
 ```
+
+`load(doc)` does the rest:
+
+*   renders the pages, capturing the document's layout only when an inspector plugin needs it;
+*   generates the PDF only if the user clicks Download, and names it from the document's title (`Quarterly Report` → `quarterly-report.pdf`);
+*   shows a loading state while it works and an error state if rendering fails. A failed load rejects its promise and dispatches a `bpp-load-error` event (`event.detail.error`) from the element. A document already on screen stays visible under an error banner;
+*   lets a newer `load()` replace one still in progress, so rapid re-renders never show a stale document.
+
+`load()` also accepts a promise of a document. It is safe to call before the element is connected; the load runs when it mounts. A second argument overrides the filename or supplies the PDF: `viewer.load(doc, { downloadFilename: 'q3.pdf' })`.
 
 Attributes: `show-thumbnails` (`"false"` to hide), `show-inspector` (`"false"` to collapse), `fit-mode` (`fit-page` | `fit-width`), `download-filename`, `selection-color`, and `label`. Set `footer` to render a footer bar (see [Footer](#footer)).
 
@@ -51,18 +54,54 @@ Entering fullscreen temporarily switches the document to Fit Page. Leaving fulls
 ## Usage — factory (any framework / light DOM)
 
 ```js
-import { createPreviewer, svgStringsToPages } from '@bonniepdf/previewer';
+import { createPreviewer } from '@bonniepdf/previewer';
 
 const handle = createPreviewer(container, {
   fitMode: 'fit-width',
   selectionColor: '#16a34a',
 });
-handle.load(svgStringsToPages(pages), { fontFaceCss });
+await handle.load(doc);
 // later:
 handle.dispose();
 ```
 
 `createPreviewer` accepts a `ShadowRoot` or any element. The web component acts as a wrapper that calls this factory with its own shadow root.
+
+## Generating elsewhere
+
+A `Document` is a live object in one JavaScript runtime. When the document is generated somewhere else, pass its **export** instead: the result of `generateSvgDocumentAsync()`, or the same data as JSON. The previewer reads page sizes from each page's `<svg>`, injects the font CSS once, and hands the layout snapshot and compliance report to its inspector.
+
+From a .NET server, where the document can never reach the browser:
+
+```csharp
+// ASP.NET Core
+app.MapGet("/preview", () => Results.Content(
+    BuildReport().GenerateSvgDocument(new SvgPageExportOptions { CaptureLayout = true }).ToJson(),
+    "application/json"));
+```
+
+```js
+await viewer.load(await (await fetch('/preview')).json(), {
+  pdf: () => fetch('/report.pdf').then(r => r.blob()), // optional: enables Download
+});
+```
+
+From a web worker, to keep a large document off the main thread:
+
+```js
+// worker.js
+const svgExport = await doc.generateSvgDocumentAsync({ captureLayout: true });
+postMessage({ svgExport, pdf: await doc.generateBytesAsync() });
+
+// page
+worker.onmessage = ({ data }) => viewer.load(data.svgExport, { pdf: data.pdf });
+```
+
+An export carries no document to generate a PDF from, so Download appears only when you pass `pdf`: a URL, a `Blob`, bytes, or a function returning one, called on the first click. When the previewer turns a `Blob` or bytes into an object URL, it owns that URL and revokes it on the next load or on `dispose()`; URLs you pass are yours.
+
+### Earlier API
+
+`load(svgStringsToPages(pages), { fontFaceCss, snapshot, report, pdfUrl, pdfProvider })` still works and behaves as before, but is deprecated and will be removed in the next major version. Pass the document or its export instead.
 
 ## Accessibility inspector (plugin)
 
@@ -70,17 +109,13 @@ The previewer includes a plugin system. The `complianceView()` plugin renders th
 
 The tree expands and collapses per node. Each row displays the element type, name, structure role, and severity. Geometry details (page span, size in points, origin) appear in the detail pane upon selection. Selection is bidirectional: click a row to highlight the page element, or click an element on the page to select its deepest node in the tree.
 
-It consumes the layout snapshot from `@bonniepdf/core`:
+It consumes the layout snapshot and compliance report from `@bonniepdf/core`. With the plugin registered, `load(doc)` captures them automatically; an export carries them when it was generated with `captureLayout: true`.
 
 ```js
-import { complianceView, createPreviewer, svgStringsToPages } from '@bonniepdf/previewer';
-
-// Ask core to capture the layout while rendering the SVG:
-const { pages, fontFaceCss, snapshot } =
-  await doc.generateSvgDocumentAsync({ captureLayout: true });
+import { complianceView, createPreviewer } from '@bonniepdf/previewer';
 
 const handle = createPreviewer(container, { plugins: [complianceView()] });
-handle.load(svgStringsToPages(pages), { fontFaceCss, snapshot });
+await handle.load(doc);
 ```
 
 Web-component opt-in via the `compliance-view` attribute:
@@ -116,7 +151,8 @@ An optional footer bar renders below the pages, displaying host-supplied text (l
 ## Performance
 
 *   **Windowed virtualisation:** Mounts only pages/thumbnails near the viewport in the DOM, keeping the rest as placeholders.
-*   **Lazy PDF:** Generates the full PDF only upon clicking Download (via `pdfProvider`).
+*   **Lazy PDF:** Generates the full PDF only upon clicking Download.
+*   **Layout capture on demand:** `load(doc)` asks for the layout snapshot only when an inspector plugin is registered.
 *   **Deterministic teardown:** `dispose()` (and `disconnectedCallback`) disconnect all observers and listeners.
 
 ## Theming

@@ -122,6 +122,10 @@ export function buildShell(
     <span class="bpp-spinner" aria-hidden="true"></span>
     <span>Generating preview…</span>
   </div>
+  <div class="bpp-error" data-error role="alert" hidden>
+    <span class="bpp-error-title">The preview could not be generated.</span>
+    <span class="bpp-error-detail" data-error-detail></span>
+  </div>
 </div>`;
 }
 

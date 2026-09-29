@@ -214,6 +214,12 @@ export interface PreviewerSyncContext {
  */
 export interface PreviewerPlugin {
   readonly name: string;
+  /**
+   * Set when the plugin reads the layout snapshot or compliance report. When any
+   * registered plugin sets it, `load(doc)` asks the document to capture its
+   * layout; otherwise it skips that work.
+   */
+  readonly needsLayout?: boolean;
   setup?(ctx: PreviewerPluginContext): void | (() => void);
   load?(ctx: PreviewerLoadContext): void;
   sync?(ctx: PreviewerSyncContext): void;
@@ -314,7 +320,7 @@ export interface PreviewerOptions {
   selectionColor?: string;
 }
 
-/** Per-document data handed to {@link PreviewerHandle.load}. */
+/** Per-document data handed to the deprecated `load(pages, options)` form. */
 export interface LoadOptions {
   /**
    * `@font-face` CSS (e.g. from `generateSvgDocumentAsync`) embedding the
@@ -324,12 +330,16 @@ export interface LoadOptions {
    * never collide with installed fonts).
    */
   fontFaceCss?: string;
-  /** A ready PDF blob/URL for the download button. */
+  /**
+   * A ready PDF blob/URL for the download button.
+   * @deprecated Load the document or its export and pass {@link PreviewLoadOptions.pdf}.
+   */
   pdfUrl?: string;
   /**
    * Lazily produces the PDF blob URL on the first download click. Preferred over
    * {@link pdfUrl} so previewing a large document does not pay for full PDF
    * generation unless the user actually downloads.
+   * @deprecated Load the document or its export and pass {@link PreviewLoadOptions.pdf}.
    */
   pdfProvider?: () => Promise<string>;
   /** Overrides the download filename for this document. */
@@ -349,9 +359,84 @@ export interface LoadOptions {
   report?: ComplianceReport;
 }
 
+/**
+ * A document the previewer can render itself: any object with these two methods,
+ * which `@bonniepdf/core`'s `Document` has. Checked by shape, not by class, so
+ * the previewer works with whichever copy of core the host bundles.
+ */
+export interface PreviewableDocument {
+  generateSvgDocumentAsync(options?: { captureLayout?: boolean }): Promise<PreviewExport>;
+  generateBytesAsync(): Promise<Uint8Array>;
+  readonly metadata?: { readonly title?: string };
+}
+
+/**
+ * A rendered document produced anywhere, in either language: the value of
+ * `@bonniepdf/core`'s `generateSvgDocumentAsync()`, or the JSON a .NET server
+ * returns from `SvgDocumentExport.ToJson()`, parsed. Page sizes are read from
+ * each page's root `<svg>`.
+ */
+export interface PreviewExport {
+  /** Export format version. Absent in exports from releases before it existed. */
+  version?: number;
+  /** One `<svg>` document per page, in page order. */
+  pages: readonly string[];
+  /** `@font-face` CSS for the embedded fonts, injected once for every page. */
+  fontFaceCss?: string;
+  /** The layout snapshot, present when the export captured layout. */
+  snapshot?: LayoutSnapshot;
+  /** The compliance report for {@link snapshot}. */
+  report?: ComplianceReport;
+}
+
+/** What {@link PreviewerHandle.load} accepts: a document, an export, or a promise of either. */
+export type PreviewSource = PreviewableDocument | PreviewExport | PromiseLike<PreviewableDocument | PreviewExport>;
+
+/**
+ * The PDF behind the download button: a URL, the bytes, or a function producing
+ * either, called on the first click only. When the previewer turns bytes into
+ * an object URL, it owns that URL and revokes it on the next load or on dispose.
+ */
+export type PdfSource =
+  | string
+  | Blob
+  | Uint8Array
+  | (() => string | Blob | Uint8Array | PromiseLike<string | Blob | Uint8Array>);
+
+/** Per-load overrides for {@link PreviewerHandle.load}. */
+export interface PreviewLoadOptions {
+  /**
+   * The download filename. Defaults to the document's title as a slug
+   * (`Quarterly Report` → `quarterly-report.pdf`), then to the previewer's
+   * `downloadFilename`.
+   */
+  downloadFilename?: string;
+  /**
+   * The PDF for the download button. A loaded document supplies its own
+   * (generated on the first click), so this is needed only for an export.
+   * Without a PDF the download button is hidden.
+   */
+  pdf?: PdfSource;
+}
+
 /** Controls a created previewer instance. Returned by `createPreviewer`. */
 export interface PreviewerHandle {
-  /** Replaces the previewed document with the given pages. */
+  /**
+   * Shows a document. Pass a `@bonniepdf/core` `Document`, and the previewer
+   * renders it, captures layout when an inspector needs it, and generates the
+   * PDF only if the user downloads. Pass an export (`generateSvgDocumentAsync()`'s
+   * result, or .NET's `ToJson()` parsed) when the document was generated
+   * elsewhere. A promise of either shows the loading state until it settles.
+   *
+   * Resolves once the document is shown, or when a newer `load()` supersedes
+   * this one. Rejects if rendering fails; the viewer then shows an error state
+   * and dispatches a `bpp-load-error` event from the host element.
+   */
+  load(source: PreviewSource, options?: PreviewLoadOptions): Promise<void>;
+  /**
+   * Replaces the previewed document with the given pages.
+   * @deprecated Pass the document or its export: `load(doc)` or `load(svgExport)`.
+   */
   load(pages: PreviewPage[], options?: LoadOptions): void;
   /** Selects and reveals a layout-snapshot node. */
   selectSnapshotNode(nodeId: string): boolean;
@@ -377,7 +462,13 @@ function parseSvgSize(svg: string): { width: number; height: number } {
 /**
  * Convenience adapter: turn the raw `string[]` returned by `exportSvgPagesAsync`
  * into {@link PreviewPage}s by reading each SVG's intrinsic dimensions.
+ * @deprecated `load()` accepts the export directly: `load(svgExport)`.
  */
 export function svgStringsToPages(svgs: readonly string[]): PreviewPage[] {
+  return readPreviewPages(svgs);
+}
+
+/** Internal: {@link PreviewPage}s from page SVGs, sized from each root `<svg>`. */
+export function readPreviewPages(svgs: readonly string[]): PreviewPage[] {
   return svgs.map(svg => ({ svg, ...parseSvgSize(svg) }));
 }

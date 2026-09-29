@@ -1,17 +1,37 @@
 import { buildShell, namespaceSvgIds } from './dom';
 import { icon } from './icons';
 import { installSelectionHighlights } from './selection-highlights';
+import { readPreviewPages } from './types';
 import type {
+  ComplianceReport,
+  LayoutSnapshot,
   LoadOptions,
+  PdfSource,
+  PreviewableDocument,
+  PreviewExport,
   PreviewerHandle,
   PreviewerOptions,
   PreviewerPlugin,
   PreviewerPluginContext,
   PreviewerLoadContext,
+  PreviewLoadOptions,
   PreviewPage,
+  PreviewSource,
   PreviewerZoomState,
   SnapshotMeta,
 } from './types';
+
+/** What one render needs, whichever form of `load()` produced it. */
+interface RenderInput {
+  fontFaceCss?: string;
+  snapshot?: LayoutSnapshot;
+  report?: ComplianceReport;
+  filename: string;
+  pdf?: PdfSource;
+  /** The deprecated `load(pages)` form disables an unavailable download button
+   * rather than hiding it, as it always has. */
+  legacyDownload?: boolean;
+}
 
 const PAGE_PAD = 24;
 const ZOOM_STEP = 1.25;
@@ -153,6 +173,13 @@ export function createPreviewer(
   let fontStyle: HTMLStyleElement | null = null;
   let disposed = false;
   let exitFullscreenMode: (() => void) | null = null;
+  // Each load() takes a token; an async load whose token is no longer current
+  // was superseded and stops without touching the view.
+  let loadToken = 0;
+  let hasRendered = false;
+  // An object URL the previewer created for a PDF, revoked on the next load or
+  // on dispose. URLs the host passed in are the host's and are never revoked.
+  let ownedPdfUrl: string | null = null;
 
   // ── Plugin host ────────────────────────────────────────────────────────────
   // Per-load state the plugin context closes over via mutable refs, so a single
@@ -482,9 +509,123 @@ export function createPreviewer(
     );
   }
 
-  function load(pages: PreviewPage[], loadOptions: LoadOptions = {}): void {
+  const needsLayout = plugins.some(plugin => plugin.needsLayout === true);
+  const explicitFilename = options.downloadFilename;
+
+  function releaseOwnedPdfUrl(): void {
+    if (ownedPdfUrl) {
+      URL.revokeObjectURL(ownedPdfUrl);
+      ownedPdfUrl = null;
+    }
+  }
+
+  /** Shows the loading state: the overlay before anything is shown, and a quiet
+   * busy state over a document already on screen, so a re-render does not flash. */
+  function showLoading(): void {
+    const shell = q<HTMLElement>('.bpp');
+    const error = q<HTMLElement>('[data-error]');
+    if (error) error.hidden = true;
+    if (hasRendered) {
+      shell?.classList.add('bpp-busy');
+      shell?.setAttribute('aria-busy', 'true');
+    } else {
+      const loading = q<HTMLElement>('[data-loading]');
+      if (loading) loading.hidden = false;
+    }
+  }
+
+  function clearStatus(): void {
+    const shell = q<HTMLElement>('.bpp');
+    shell?.classList.remove('bpp-busy');
+    shell?.removeAttribute('aria-busy');
+    const loading = q<HTMLElement>('[data-loading]');
+    if (loading) loading.hidden = true;
+    const error = q<HTMLElement>('[data-error]');
+    if (error) error.hidden = true;
+  }
+
+  /** Shows a failed load: a full error state when nothing is on screen, or a
+   * banner over the document already shown, which stays visible. */
+  function showError(error: unknown): void {
+    clearStatus();
+    const el = q<HTMLElement>('[data-error]');
+    if (!el) return;
+    el.classList.toggle('bpp-error-banner', hasRendered);
+    const detail = el.querySelector<HTMLElement>('[data-error-detail]');
+    if (detail) detail.textContent = error instanceof Error ? error.message : String(error);
+    el.hidden = false;
+  }
+
+  function load(source: PreviewSource, options?: PreviewLoadOptions): Promise<void>;
+  function load(pages: PreviewPage[], options?: LoadOptions): void;
+  function load(
+    source: PreviewSource | PreviewPage[],
+    options?: PreviewLoadOptions | LoadOptions,
+  ): Promise<void> | void {
+    if (Array.isArray(source)) {
+      if (disposed) return;
+      loadToken++;
+      const legacy = (options ?? {}) as LoadOptions;
+      render(source, {
+        fontFaceCss: legacy.fontFaceCss,
+        snapshot: legacy.snapshot,
+        report: legacy.report,
+        filename: legacy.downloadFilename ?? opts.downloadFilename,
+        pdf: legacy.pdfUrl ?? legacy.pdfProvider,
+        legacyDownload: true,
+      });
+      return;
+    }
+    return loadSource(source, (options ?? {}) as PreviewLoadOptions);
+  }
+
+  async function loadSource(source: PreviewSource, options: PreviewLoadOptions): Promise<void> {
+    if (disposed) return;
+    const token = ++loadToken;
+    const current = () => token === loadToken && !disposed;
+    showLoading();
+    try {
+      const resolved = await source;
+      if (!current()) return;
+      let exported: PreviewExport;
+      let pdf = options.pdf;
+      let title: string | undefined;
+      if (isPreviewableDocument(resolved)) {
+        exported = await resolved.generateSvgDocumentAsync({ captureLayout: needsLayout });
+        if (!current()) return;
+        pdf ??= () => resolved.generateBytesAsync();
+        title = resolved.metadata?.title;
+      } else if (isPreviewExport(resolved)) {
+        exported = resolved;
+      } else {
+        throw new TypeError(
+          'load() expects a BonniePDF Document, an SVG document export, or a promise of either.',
+        );
+      }
+      title ??= exported.snapshot?.meta?.title;
+      render(readPreviewPages(exported.pages), {
+        fontFaceCss: exported.fontFaceCss,
+        snapshot: exported.snapshot,
+        report: exported.report,
+        // Per-load option, then the host's explicit option, then the title.
+        filename:
+          options.downloadFilename ?? explicitFilename ?? filenameFromTitle(title) ?? opts.downloadFilename,
+        pdf,
+      });
+    } catch (error) {
+      if (!current()) return;
+      showError(error);
+      hostEl.dispatchEvent(
+        new CustomEvent('bpp-load-error', { detail: { error }, bubbles: true, composed: true }),
+      );
+      throw error;
+    }
+  }
+
+  function render(pages: PreviewPage[], input: RenderInput): void {
     if (disposed) return;
     // A fresh load supersedes any previous one.
+    releaseOwnedPdfUrl();
     listeners.abort();
     listeners = new AbortController();
     for (const o of observers) o.disconnect();
@@ -492,7 +633,7 @@ export function createPreviewer(
     teardownPlugins();
     const signal = listeners.signal;
 
-    injectFonts(loadOptions.fontFaceCss);
+    injectFonts(input.fontFaceCss);
 
     const scroll = q<HTMLElement>('[data-scroll]')!;
     const pagesContainer = q<HTMLElement>('[data-pages]')!;
@@ -871,17 +1012,35 @@ export function createPreviewer(
       { signal },
     );
 
-    const filename = loadOptions.downloadFilename ?? opts.downloadFilename;
-    let pdfUrl = loadOptions.pdfUrl;
-    const provider = loadOptions.pdfProvider;
-    if (download) download.disabled = !(pdfUrl || provider);
+    const filename = input.filename;
+    const pdfSource = input.pdf;
+    const renderToken = loadToken;
+    let pdfUrl: string | undefined;
+    if (download) {
+      download.disabled = pdfSource === undefined;
+      if (!input.legacyDownload) setDownloadVisible(download, pdfSource !== undefined);
+    }
     download?.addEventListener(
       'click',
       async () => {
-        if (!pdfUrl && provider) {
+        if (!pdfUrl && pdfSource !== undefined) {
           download.disabled = true;
           try {
-            pdfUrl = await provider();
+            const value = typeof pdfSource === 'function' ? await pdfSource() : pdfSource;
+            if (typeof value === 'string') {
+              pdfUrl = value;
+            } else {
+              const url = URL.createObjectURL(
+                value instanceof Blob ? value : new Blob([value as BlobPart], { type: 'application/pdf' }),
+              );
+              // Superseded while generating: this load's URL has no owner left.
+              if (renderToken !== loadToken || disposed) {
+                URL.revokeObjectURL(url);
+                return;
+              }
+              ownedPdfUrl = url;
+              pdfUrl = url;
+            }
           } catch {
             /* leave enabled to retry */
           } finally {
@@ -897,9 +1056,9 @@ export function createPreviewer(
     if (totalPagesEl) totalPagesEl.textContent = String(totalPages);
     if (currentPageEl) currentPageEl.textContent = totalPages > 0 ? '1' : '0';
     if (thumbsNav) thumbsNav.hidden = !showThumbnails;
-    const loading = q<HTMLElement>('[data-loading]');
-    if (loading) loading.hidden = true;
-    updateFooterTags(loadOptions.snapshot?.meta);
+    clearStatus();
+    hasRendered = true;
+    updateFooterTags(input.snapshot?.meta);
 
     // Expose this load's state to the plugin context, then run plugin load().
     curPageEls = pageEls;
@@ -910,8 +1069,8 @@ export function createPreviewer(
       const loadCtx: PreviewerLoadContext = {
         ...pluginContext,
         pages,
-        snapshot: loadOptions.snapshot,
-        report: loadOptions.report,
+        snapshot: input.snapshot,
+        report: input.report,
       };
       for (const plugin of plugins) {
         try {
@@ -1053,9 +1212,48 @@ export function createPreviewer(
       fontStyle.remove();
       fontStyle = null;
     }
+    releaseOwnedPdfUrl();
   }
 
   return { load, selectSnapshotNode, dispose };
+}
+
+function isPreviewableDocument(value: unknown): value is PreviewableDocument {
+  const candidate = value as Partial<PreviewableDocument> | null;
+  return (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    typeof candidate.generateSvgDocumentAsync === 'function' &&
+    typeof candidate.generateBytesAsync === 'function'
+  );
+}
+
+function isPreviewExport(value: unknown): value is PreviewExport {
+  const pages = (value as Partial<PreviewExport> | null)?.pages;
+  return Array.isArray(pages) && pages.every(page => typeof page === 'string');
+}
+
+/** `Quarterly Report` → `quarterly-report.pdf`; undefined when nothing usable remains. */
+function filenameFromTitle(title: string | undefined): string | undefined {
+  const slug = (title ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/, '');
+  return slug ? `${slug}.pdf` : undefined;
+}
+
+/** Shows or hides the download group, and the separator that introduces it, so
+ * a hidden button leaves no stray divider. */
+function setDownloadVisible(button: HTMLButtonElement, visible: boolean): void {
+  const group = button.closest<HTMLElement>('.bpp-group');
+  if (!group) return;
+  group.hidden = !visible;
+  const separator = group.previousElementSibling;
+  if (separator instanceof HTMLElement && separator.classList.contains('bpp-sep')) separator.hidden = !visible;
 }
 
 function triggerDownload(doc: Document, url: string, filename: string): void {

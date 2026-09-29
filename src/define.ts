@@ -2,6 +2,8 @@ import { createPreviewer } from './controller';
 import { complianceView } from './compliance-view';
 import type {
   LoadOptions,
+  PreviewLoadOptions,
+  PreviewSource,
   PreviewerHandle,
   PreviewerOptions,
   PreviewerPlugin,
@@ -13,15 +15,15 @@ import type {
 /**
  * `<bonnie-pdf-previewer>` — a framework-agnostic PDF preview element.
  *
- * Pages are SVG strings (too large for attributes), so they're supplied through
- * the imperative {@link load} method rather than markup:
+ * A document is an object, not markup, so it's supplied through the imperative
+ * {@link load} method:
  *
  * ```js
- * import { defineBonniePdfPreviewer } from '@bonniepdf/previewer';
- * defineBonniePdfPreviewer();
+ * import '@bonniepdf/previewer/element';
  *
  * const el = document.querySelector('bonnie-pdf-previewer');
- * el.load(svgStringsToPages(svgPages), { fontFaceCss, pdfProvider });
+ * el.load(doc);            // a @bonniepdf/core Document
+ * el.load(svgExport);      // or an export generated elsewhere, e.g. by a .NET server
  * ```
  *
  * Configuration is read from attributes: `show-thumbnails` (`"false"` to hide),
@@ -48,16 +50,17 @@ import type {
  */
 export class BonniePdfPreviewerElement extends HTMLElement {
   private handle: PreviewerHandle | null = null;
-  private pending: { pages: PreviewPage[]; options?: LoadOptions } | null = null;
+  /** A load requested before the element was connected, replayed on connect.
+   * `settle` resolves the promise a superseded pending load handed out. */
+  private pending: { run(handle: PreviewerHandle): void; settle(): void } | null = null;
 
   connectedCallback(): void {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     if (!this.handle) {
       this.handle = createPreviewer(root, this.readOptions());
-      if (this.pending) {
-        this.handle.load(this.pending.pages, this.pending.options);
-        this.pending = null;
-      }
+      const pending = this.pending;
+      this.pending = null;
+      pending?.run(this.handle);
     }
   }
 
@@ -66,11 +69,36 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     this.handle = null;
   }
 
-  /** Replaces the previewed document. Safe to call before the element is
-   * connected — the pages are applied as soon as it mounts. */
-  load(pages: PreviewPage[], options?: LoadOptions): void {
-    if (this.handle) this.handle.load(pages, options);
-    else this.pending = { pages, options };
+  /**
+   * Shows a document: a `@bonniepdf/core` `Document`, an SVG document export,
+   * or a promise of either. See {@link PreviewerHandle.load}. Safe to call
+   * before the element is connected; the load runs as soon as it mounts.
+   */
+  load(source: PreviewSource, options?: PreviewLoadOptions): Promise<void>;
+  /**
+   * Replaces the previewed document with the given pages.
+   * @deprecated Pass the document or its export: `load(doc)` or `load(svgExport)`.
+   */
+  load(pages: PreviewPage[], options?: LoadOptions): void;
+  load(source: PreviewSource | PreviewPage[], options?: PreviewLoadOptions | LoadOptions): Promise<void> | void {
+    if (this.handle) {
+      return Array.isArray(source)
+        ? this.handle.load(source, options as LoadOptions)
+        : this.handle.load(source, options as PreviewLoadOptions);
+    }
+    // Not connected yet: keep only the newest request, and settle the promise
+    // of the one it replaces, as a superseded load does once connected.
+    this.pending?.settle();
+    if (Array.isArray(source)) {
+      this.pending = { run: handle => handle.load(source, options as LoadOptions), settle: () => {} };
+      return;
+    }
+    return new Promise<void>((resolve, reject) => {
+      this.pending = {
+        run: handle => void handle.load(source, options as PreviewLoadOptions).then(resolve, reject),
+        settle: resolve,
+      };
+    });
   }
 
   /** Selects and reveals a layout-snapshot node by its current document id. */

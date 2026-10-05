@@ -1,6 +1,6 @@
 # BonniePDF Previewer (`@bonniepdf/previewer`) — agent guide
 
-A framework-agnostic PDF preview component: it renders the **SVG pages** produced by `@bonniepdf/core` as a paginated, zoomable viewer with a thumbnail rail, page navigation, and a lazy "Download PDF" action. Ships as a **Shadow-DOM web component** (`<bonnie-pdf-previewer>`), MIT-licensed.
+A framework-agnostic PDF preview component: it renders the **SVG pages** produced by `@bonniepdf/core` as a paginated, zoomable viewer with a thumbnail rail, page navigation, and a lazy "Download PDF" action. Ships as a **Shadow-DOM web component** (`<bonnie-pdf-previewer>`), Apache-2.0-licensed.
 
 > **This repository is public.** Keep this file, the README, and code comments useful to an outside contributor who has cloned only this repo.
 

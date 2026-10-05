@@ -12,11 +12,10 @@ approach in an issue saves rework.
 
 ## Licensing of contributions
 
-This repository is published under the **MIT License** (see [LICENSE](LICENSE)),
-and contributions are accepted under the same terms. MIT already permits
-relicensing, so the grant below mainly records provenance — but it is stated
-explicitly because this component ships inside commercially licensed BonniePDF
-distributions.
+This repository is published under the **Apache-2.0 License** (see [LICENSE](LICENSE)),
+and contributions are accepted under the same terms. The grant below records
+provenance and ensures clarity, as this component ships inside commercially
+licensed BonniePDF distributions.
 
 By submitting a contribution you confirm that:
 

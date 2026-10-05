@@ -161,4 +161,4 @@ Colors resolve `--bpdf-*` custom properties, falling back to a light theme.
 
 ## License
 
-`@bonniepdf/previewer` is licensed under the [MIT License](./LICENSE).
+`@bonniepdf/previewer` is licensed under the [Apache-2.0 License](./LICENSE).

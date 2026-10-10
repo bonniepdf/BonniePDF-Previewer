@@ -656,6 +656,9 @@ export function createPreviewer(
       thumbButtons.push(button);
       const canvas = ownerDoc.createElement('span');
       canvas.className = 'bpp-thumb-canvas';
+      // A decorative mini-render: the button's aria-label names it. Hiding the whole canvas keeps the
+      // text inside the page SVG out of the button's visible label (axe label-content-name-mismatch).
+      canvas.setAttribute('aria-hidden', 'true');
       canvas.style.aspectRatio = `${page.width} / ${page.height}`;
       thumbCanvases.push(canvas);
       const label = ownerDoc.createElement('span');

@@ -3,36 +3,37 @@
 // reset) cannot reach the SVG pages — the very class of bug that plagues
 // light-DOM embedding is structurally impossible here.
 //
-// Theming: every colour resolves the shared BonniePDF tokens (`--bpdf-*` /
-// `--bpdf-*`) set by @bonniepdf/ui-shared on the host document, then a literal
-// light-theme default. Custom properties pierce the shadow boundary, so the
-// previewer matches the host page's theme automatically.
+// Theming: every colour resolves the previewer's own `--bpdf-*` tokens first
+// (what the VS Code, Visual Studio and desktop hosts set), then the CongruentUI
+// `--cui-*` tokens the BonniePDF websites define, then a literal light-theme
+// default. Custom properties pierce the shadow boundary, so the previewer
+// matches the host page's theme, light or dark, with no extra CSS.
 
 export const STYLES = /* css */ `
 :host {
-  --_divider: var(--bpdf-divider, #e2e8f0);
-  --_bg: var(--bpdf-bg, #ffffff);
-  --_bg-alt: var(--bpdf-bg-alt, #f1f5f9);
-  --_bg-soft: var(--bpdf-bg-soft, #f8fafc);
-  --_brand: var(--bpdf-brand-2, #007acc);
-  --_brand-soft: var(--bpdf-brand-soft, rgba(0, 122, 204, 0.08));
-  --_text-1: var(--bpdf-text-1, #0f172a);
-  --_text-2: var(--bpdf-text-2, #475569);
-  --_text-3: var(--bpdf-text-3, #94a3b8);
-  --_radius-md: var(--bpdf-radius, 8px);
+  --_divider: var(--bpdf-divider, var(--cui-divider, #e2e8f0));
+  --_bg: var(--bpdf-bg, var(--cui-bg, #ffffff));
+  --_bg-alt: var(--bpdf-bg-alt, var(--cui-bg-alt, #f1f5f9));
+  --_bg-soft: var(--bpdf-bg-soft, var(--cui-bg-soft, #f8fafc));
+  --_brand: var(--bpdf-brand-2, var(--cui-brand-1, #007acc));
+  --_brand-soft: var(--bpdf-brand-soft, var(--cui-brand-soft, rgba(0, 122, 204, 0.08)));
+  --_text-1: var(--bpdf-text-1, var(--cui-text-1, #0f172a));
+  --_text-2: var(--bpdf-text-2, var(--cui-text-2, #475569));
+  --_text-3: var(--bpdf-text-3, var(--cui-text-3, #94a3b8));
+  --_radius-md: var(--bpdf-radius, var(--cui-radius, 8px));
   --_radius-sm: 6px;
 
   /* Compliance severity palette (overridable via --bpdf-* tokens). */
-  --_sev-error: var(--bpdf-error, #dc2626);
-  --_sev-warning: var(--bpdf-warning, #d97706);
-  --_sev-info: var(--bpdf-info, #2563eb);
-  --_sev-ok: var(--bpdf-status-success-text, var(--bpdf-success, #047857));
+  --_sev-error: var(--bpdf-error, var(--cui-danger-1, #dc2626));
+  --_sev-warning: var(--bpdf-warning, var(--cui-status-warning-text, #d97706));
+  --_sev-info: var(--bpdf-info, var(--cui-palette-blue, #2563eb));
+  --_sev-ok: var(--bpdf-status-success-text, var(--bpdf-success, var(--cui-status-success-text, #047857)));
 
   display: block;
   height: 100%;
   min-height: 0;
   /* A clean default font for the chrome; the SVG pages carry their own fonts. */
-  font-family: var(--bpdf-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
+  font-family: var(--bpdf-font-family, var(--cui-font-family, system-ui, -apple-system, Segoe UI, Roboto, sans-serif));
 }
 
 /* Maximized web components enter the browser's top layer via the Popover API,

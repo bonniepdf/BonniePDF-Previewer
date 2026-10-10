@@ -157,7 +157,7 @@ An optional footer bar renders below the pages, displaying host-supplied text (l
 
 ## Theming
 
-Colors resolve `--bpdf-*` custom properties, falling back to a light theme.
+Colors resolve `--bpdf-*` custom properties, then the CongruentUI `--cui-*` tokens used by the BonniePDF websites, falling back to a light theme. A host that defines either set gets a previewer that follows its light and dark modes; the pages themselves stay white, because they are paper.
 
 ## License
 

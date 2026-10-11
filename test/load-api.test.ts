@@ -330,4 +330,18 @@ describe('<bonnie-pdf-previewer> load()', () => {
     await second;
     expect(el.shadowRoot!.querySelectorAll('.bpp-page')).toHaveLength(3);
   });
+
+  it('applies bpp-no-border class when hide-border attribute is set', () => {
+    const el = document.createElement('bonnie-pdf-previewer-load-test') as BonniePdfPreviewerElement;
+    el.setAttribute('hide-border', 'true');
+    document.body.append(el);
+    expect(el.shadowRoot!.querySelector('.bpp')!.classList.contains('bpp-no-border')).toBe(true);
+  });
+
+  it('applies bpp-no-border class when hide-border boolean attribute is set', () => {
+    const el = document.createElement('bonnie-pdf-previewer-load-test') as BonniePdfPreviewerElement;
+    el.setAttribute('hide-border', '');
+    document.body.append(el);
+    expect(el.shadowRoot!.querySelector('.bpp')!.classList.contains('bpp-no-border')).toBe(true);
+  });
 });

@@ -74,6 +74,7 @@ export const STYLES = /* css */ `
 
 .bpp-no-border {
   border-color: transparent;
+  border-radius: 0;
 }
 
 .bpp-fullscreen {

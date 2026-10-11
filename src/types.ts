@@ -303,7 +303,7 @@ export interface PreviewerOptions {
   title?: string;
   /** Default download filename. Defaults to `'document.pdf'`. */
   downloadFilename?: string;
-  /** Hides the outer border around the previewer. Defaults to `false`. */
+  /** Hides the outer border and border-radius around the previewer. Defaults to `false`. */
   hideBorder?: boolean;
   /**
    * Renders the footer bar below the page area. Omit for no footer. See

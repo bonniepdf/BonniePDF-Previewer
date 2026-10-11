@@ -135,7 +135,9 @@ export class BonniePdfPreviewerElement extends HTMLElement {
       fitMode: this.getAttribute('fit-mode') === 'fit-width' ? 'fit-width' : 'fit-page',
       title: this.getAttribute('label') ?? undefined,
       downloadFilename: this.getAttribute('download-filename') ?? undefined,
-      hideBorder: this.getAttribute('hide-border') === 'true',
+      hideBorder:
+        this.getAttribute('hide-border') === 'true' ||
+        (this.hasAttribute('hide-border') && this.getAttribute('hide-border') !== 'false'),
       styleScrollbars: this.getAttribute('style-scrollbars') === 'true',
       selectionColor: this.getAttribute('selection-color') ?? undefined,
       footer:

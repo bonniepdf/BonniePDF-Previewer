@@ -193,7 +193,7 @@ export const STYLES = /* css */ `
 /* ── Body / thumbnails / pages ───────────────────────────────────────────── */
 .bpp-body { display: flex; flex-direction: row; flex: 1; min-height: 0; overflow: hidden; }
 .bpp-thumbs {
-  width: 168px; flex-shrink: 0; overflow-y: auto;
+  width: 168px; flex-shrink: 0; overflow-y: auto; overscroll-behavior: contain;
   background: var(--_bg-soft); border-right: 1px solid var(--_divider);
 }
 .bpp-thumbs[hidden] { display: none; }
@@ -221,7 +221,7 @@ export const STYLES = /* css */ `
    the ResizeObserver (width -> page scale -> content height -> scrollbar ->
    width...), which oscillates forever for documents whose fitted height lands
    right at the viewport boundary (e.g. the pdf-compliance example). */
-.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.bpp-scroll { flex: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .bpp-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; min-width: min-content; }
 .bpp-page {
   position: relative;
@@ -336,7 +336,7 @@ export const STYLES = /* css */ `
 .bpp-side-tab-badge-info { background: var(--_sev-info); }
 .bpp-side-tab-badge-ok { background: var(--_sev-ok); }
 /* Body: holds every panel's element; only the active one is shown. */
-.bpp-side-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.bpp-side-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
 .bpp-side-body > [hidden] { display: none; }
 .bpp-side-body > * { flex: 1 1 auto; min-height: 0; }
 /* Toolbar toggle: a dot signals unseen issues while the panel is collapsed. */

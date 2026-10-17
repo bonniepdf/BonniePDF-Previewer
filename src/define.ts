@@ -106,6 +106,13 @@ export class BonniePdfPreviewerElement extends HTMLElement {
     return this.handle?.selectSnapshotNode(nodeId) ?? false;
   }
 
+  /** Clears rendered pages and resets to the loading state without removing injected fonts. */
+  clear(): void {
+    this.pending?.settle();
+    this.pending = null;
+    this.handle?.clear();
+  }
+
   private readOptions(): PreviewerOptions {
     const showThumbs = this.getAttribute('show-thumbnails');
     const showInspector = this.getAttribute('show-inspector');

@@ -1181,10 +1181,6 @@ export function createPreviewer(
    * (font resources are document-scoped and reach shadow content). */
   function injectFonts(css: string | undefined): void {
     if (!css) {
-      if (fontStyle) {
-        fontStyle.remove();
-        fontStyle = null;
-      }
       return;
     }
     if (!fontStyle) {
@@ -1192,7 +1188,40 @@ export function createPreviewer(
       fontStyle.setAttribute('data-bpp-fonts', '');
       ownerDoc.head.appendChild(fontStyle);
     }
-    fontStyle.textContent = css;
+    if (fontStyle.textContent !== css) {
+      fontStyle.textContent = css;
+    }
+  }
+
+  function clear(): void {
+    if (disposed) return;
+    loadToken++;
+    releaseOwnedPdfUrl();
+    listeners.abort();
+    listeners = new AbortController();
+    for (const o of observers) o.disconnect();
+    observers = [];
+    teardownPlugins();
+    hasRendered = false;
+    q<HTMLElement>('[data-pages]')?.replaceChildren();
+    q<HTMLElement>('[data-thumbs-list]')?.replaceChildren();
+    const shell = q<HTMLElement>('.bpp');
+    shell?.classList.remove('bpp-busy');
+    shell?.removeAttribute('aria-busy');
+    const error = q<HTMLElement>('[data-error]');
+    if (error) error.hidden = true;
+    const loading = q<HTMLElement>('[data-loading]');
+    if (loading) loading.hidden = false;
+    const currentEl = q<HTMLElement>('[data-current-page]');
+    if (currentEl) currentEl.textContent = '0';
+    const totalEl = q<HTMLElement>('[data-total-pages]');
+    if (totalEl) totalEl.textContent = '0';
+    const prevBtn = q<HTMLButtonElement>('[data-prev]');
+    if (prevBtn) prevBtn.disabled = true;
+    const nextBtn = q<HTMLButtonElement>('[data-next]');
+    if (nextBtn) nextBtn.disabled = true;
+    const downloadBtn = q<HTMLButtonElement>('[data-download]');
+    if (downloadBtn) downloadBtn.disabled = true;
   }
 
   function dispose(): void {
@@ -1218,7 +1247,7 @@ export function createPreviewer(
     releaseOwnedPdfUrl();
   }
 
-  return { load, selectSnapshotNode, dispose };
+  return { load, selectSnapshotNode, clear, dispose };
 }
 
 function isPreviewableDocument(value: unknown): value is PreviewableDocument {

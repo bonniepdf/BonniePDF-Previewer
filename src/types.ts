@@ -440,6 +440,8 @@ export interface PreviewerHandle {
   load(pages: PreviewPage[], options?: LoadOptions): void;
   /** Selects and reveals a layout-snapshot node. */
   selectSnapshotNode(nodeId: string): boolean;
+  /** Clears rendered pages and resets to the loading state without removing injected fonts. */
+  clear(): void;
   /** Disconnects observers and listeners. Safe to call more than once. */
   dispose(): void;
 }

@@ -44,7 +44,7 @@ export interface ComplianceViewOptions {
    * fixed-height summary.
    */
   issuesLabel?: string;
-  /** Show the panel as soon as a snapshot loads. Defaults to `true`. */
+  /** Show the panel as soon as a snapshot loads. Defaults to `false`. */
   openByDefault?: boolean;
   /**
    * Paint a persistent tinted marker over every flagged element on the page
@@ -115,7 +115,7 @@ const WCAG_STANDARD_PREFIX = 'WCAG';
 export function complianceView(options: ComplianceViewOptions = {}): PreviewerPlugin {
   const label = options.label ?? 'Accessibility';
   const issuesLabel = options.issuesLabel ?? 'Issues';
-  const openByDefault = options.openByDefault ?? true;
+  const openByDefault = options.openByDefault ?? false;
   const markIssues = options.markIssuesOnPage ?? true;
   const defaultExpandDepth = Math.max(0, options.defaultExpandDepth ?? Infinity);
   const preferenceKey = options.preferenceKey;

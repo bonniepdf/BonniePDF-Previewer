@@ -128,7 +128,7 @@ export function createPreviewer(
 ): PreviewerHandle {
   const opts = {
     plugins: options.plugins ?? [],
-    showThumbnails: options.showThumbnails ?? true,
+    showThumbnails: options.showThumbnails ?? false,
     showInspector: options.showInspector,
     initialZoom: options.initialZoom,
     onViewStateChange: options.onViewStateChange ?? (() => {}),

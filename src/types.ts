@@ -286,7 +286,7 @@ export interface PreviewerOptions {
    * omitting this leaves the full toolbar in place. See {@link ToolbarConfig}.
    */
   toolbar?: ToolbarConfig;
-  /** Show the thumbnail rail on first render. Defaults to `true`. */
+  /** Show the thumbnail rail on first render. Defaults to `false`. */
   showThumbnails?: boolean;
   /**
    * Show the shared inspector region on first render. When omitted, inspector

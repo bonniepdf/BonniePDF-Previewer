@@ -4,6 +4,7 @@
   "description": "Framework-agnostic PDF preview component for BonniePDF — renders the SVG pages from @bonniepdf/core as a paginated, zoomable viewer with thumbnails. Ships as a Shadow-DOM web component, fully isolated from host-page CSS.",
   "type": "module",
   "license": "Apache-2.0",
+  "author": "CodeFocus Limited",
   "sideEffects": [
     "./dist/element.js",
     "./dist/element.cjs",
@@ -29,7 +30,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --outDir dist",
+    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --outDir dist && node scripts/fix-dts-extensions.mjs dist",
+    "check:consumer-types": "tsc -p scripts/consumer-types/tsconfig.json",
+    "prepublishOnly": "pnpm run check:consumer-types",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm run build",
@@ -59,5 +62,8 @@
     "tsup": "^8.5.1",
     "typescript": "7.0.2",
     "vitest": "^4.1.11"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

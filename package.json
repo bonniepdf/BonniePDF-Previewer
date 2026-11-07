@@ -15,14 +15,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./element": {
-      "types": "./dist/element.d.ts",
-      "import": "./dist/element.js",
-      "require": "./dist/element.cjs"
+      "import": {
+        "types": "./dist/element.d.ts",
+        "default": "./dist/element.js"
+      },
+      "require": {
+        "types": "./dist/element.d.cts",
+        "default": "./dist/element.cjs"
+      }
     }
   },
   "files": [
@@ -30,7 +40,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --outDir dist && node scripts/fix-dts-extensions.mjs dist",
+    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --outDir dist && node scripts/fix-dts-extensions.mjs dist && node scripts/emit-cjs-declarations.mjs dist",
     "check:consumer-types": "tsc -p scripts/consumer-types/tsconfig.json",
     "prepublishOnly": "pnpm run check:consumer-types",
     "dev": "tsup --watch",

@@ -129,7 +129,7 @@ To write a plugin: implement `PreviewerPlugin` (`setup` / `load` / `sync` / `tea
 The inspector functions as an accessibility/PDF-UA preflight panel. Since BonniePDF generates the document, it retains element semantics from authoring. It reads the enriched snapshot (role, tagged/artifact, alt text, heading level) and an optional compliance report from `evaluateCompliance(snapshot)`. The panel provides:
 
 *   An expandable layout tree (WAI-ARIA tree pattern: single tab stop, arrow navigation, `←`/`→` to collapse/expand, `*` to expand all). Opens fully by default. Use `defaultExpandDepth` to limit initial depth (branches with errors still expand).
-*   Tree rows tagged with a role chip (`H1`, `Figure`, `TH`) and severity dot (red = error, amber = warning, blue = info, green = tagged OK, dashed = artifact).
+*   Tree rows show PDF role badges (`H1`, `Figure`, `TH`). A filled badge marks tagged content, a dashed badge identifies artifacts, and separate icons distinguish errors, warnings, and informational findings.
 *   A summary displaying the PDF/UA-1 verdict and issue counts, featuring a "show only elements with issues" filter and an "include WCAG contrast checks" toggle.
 *   An `Issues` tab grouping findings (errors → warnings → info). Each finding includes the element, page, and a "Go to element" button. Findings scroll independently from the tree.
 *   A severity-tinted overlay indicating flagged elements directly on the document.

@@ -1,4 +1,4 @@
-// Inlined toolbar icons (Lucide, ISC-licensed), so the package carries no icon
+// Inlined icons (Lucide, ISC-licensed), so the package carries no icon
 // dependency and renders identically in any host. Each value is the inner markup
 // of a 24×24 `currentColor` SVG; `icon()` wraps it in a sized <svg>.
 
@@ -23,11 +23,17 @@ const BODY = {
     '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></g>',
   'panel-right':
     '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></g>',
+  'circle-x':
+    '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/></g>',
+  'triangle-alert':
+    '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.73 18 13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4m0 4h.01"/>',
+  info:
+    '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 11v5m0-8h.01"/></g>',
 } as const;
 
 export type IconName = keyof typeof BODY;
 
-/** Returns sized SVG markup for a toolbar icon. */
+/** Returns sized SVG markup for an icon. */
 export function icon(name: IconName, className = 'bpp-icon'): string {
   return `<svg class="${className}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">${BODY[name]}</svg>`;
 }

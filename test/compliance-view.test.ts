@@ -157,25 +157,45 @@ function issuesBadge(host: HTMLElement): string | null | undefined {
 }
 
 describe('compliance view plugin', () => {
-  it('renders role chips and a severity dot, and a summary verdict', () => {
+  it('shows tagged and artifact badges, with separate icons for findings', () => {
     const host = document.createElement('div');
     document.body.append(host);
     const handle = createPreviewer(host, { plugins: [complianceView({ openByDefault: true })] });
-    handle.load(pages(1), { snapshot: snapshot(), report: report() });
+    const findings = reportWithContrast();
+    findings.findings.push({
+      code: 'page-info',
+      severity: 'info',
+      standard: 'PDF/UA-1',
+      clause: '',
+      message: 'Review the reading order on this page.',
+      nodeId: 'n1',
+    });
+    findings.infoCount = 1;
+    handle.load(pages(1), { snapshot: snapshot(), report: findings });
 
-    // Role chips for H1 and Artifact.
-    const roles = Array.from(host.querySelectorAll('.bpp-cv-role')).map(r => r.textContent);
-    expect(roles).toContain('H1');
-    expect(roles).toContain('Artifact');
+    const heading = host.querySelector('[data-node-id="n2"]')!;
+    const taggedBadge = heading.querySelector('.bpp-cv-role-tagged');
+    expect(taggedBadge?.textContent).toBe('H1');
+    expect(taggedBadge?.getAttribute('title')).toBe('Tagged content');
+    expect(taggedBadge?.querySelector('svg')).toBeNull();
+    expect(heading.getAttribute('aria-description')).toBe('Tagged content');
+    expect(heading.querySelector('.bpp-cv-issue-icon-warning')?.getAttribute('aria-label')).toBe('Warning: 1 finding');
 
-    // The QRCode row carries an error dot.
-    const errorDot = host.querySelector('.bpp-cv-dot-error');
-    expect(errorDot).toBeTruthy();
+    const artifact = host.querySelector('[data-node-id="n3"]')!;
+    expect(artifact.querySelector('.bpp-cv-role-artifact')?.textContent).toBe('Artifact');
+    expect(artifact.querySelector('.bpp-cv-role-tagged')).toBeNull();
+    expect(artifact.querySelector('.bpp-cv-issue-icon-error')?.getAttribute('aria-label')).toBe('Error: 1 finding');
+
+    const page = host.querySelector('[data-node-id="n1"]')!;
+    expect(page.querySelector('.bpp-cv-role')).toBeNull();
+    expect(page.querySelector('.bpp-cv-issue-icon-info')?.getAttribute('aria-label')).toBe('Info: 1 finding');
+    const doc = host.querySelector('[data-node-id="n0"]')!;
+    expect(doc.querySelector('.bpp-cv-role, .bpp-cv-issue-icon')).toBeNull();
 
     // Summary verdict reflects failure.
     expect(host.querySelector('.bpp-cv-verdict-fail')?.textContent).toContain('PDF/UA-1');
     // The panel's host tab badge shows the count (error+warning).
-    expect(issuesBadge(host)).toBe('1');
+    expect(issuesBadge(host)).toBe('2');
 
     handle.dispose();
     host.remove();
@@ -328,7 +348,7 @@ describe('compliance view plugin', () => {
     handle.load(pages(1), { snapshot: snapshot(), report: reportWithContrast() });
 
     // With contrast included: the Heading carries the warning.
-    expect(host.querySelectorAll('.bpp-cv-dot-warning').length).toBe(1);
+    expect(host.querySelectorAll('.bpp-cv-issue-icon-warning').length).toBe(1);
     expect(issuesBadge(host)).toBe('2');
     expect(host.querySelectorAll('.bpp-cv-mark-warning').length).toBe(1);
 
@@ -336,7 +356,7 @@ describe('compliance view plugin', () => {
     wcagToggle.checked = false;
     wcagToggle.dispatchEvent(new Event('change'));
 
-    expect(host.querySelectorAll('.bpp-cv-dot-warning').length).toBe(0);
+    expect(host.querySelectorAll('.bpp-cv-issue-icon-warning').length).toBe(0);
     expect(host.querySelectorAll('.bpp-cv-mark-warning').length).toBe(0);
     // The badge drops to the PDF/UA-1 error alone; the verdict is unchanged,
     // because no WCAG finding is ever an error.
@@ -357,7 +377,7 @@ describe('compliance view plugin', () => {
     });
     handle.load(pages(1), { snapshot: snapshot(), report: reportWithContrast() });
 
-    expect(host.querySelectorAll('.bpp-cv-dot-warning').length).toBe(0);
+    expect(host.querySelectorAll('.bpp-cv-issue-icon-warning').length).toBe(0);
     expect(host.querySelectorAll<HTMLInputElement>('.bpp-cv-filter input')[1].checked).toBe(false);
 
     handle.dispose();

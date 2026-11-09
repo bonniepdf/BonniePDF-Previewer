@@ -3,8 +3,7 @@
 //
 // It answers both "what is the layout tree?" and "is this document accessible,
 // and where are the problems?". It renders the layout snapshot as an expandable
-// tree and decorates every node with its
-// accessibility role and a severity dot, surfaces a document-level summary, and
+// tree, marks roles and findings, surfaces a document-level summary, and
 // — its differentiator — paints the flagged elements directly onto the page so an
 // author can *see* the inaccessible regions and click straight to the fix.
 //
@@ -31,6 +30,7 @@ import type {
   ComplianceReport,
   ComplianceSeverity,
 } from './types';
+import { icon, type IconName } from './icons';
 
 export interface ComplianceViewOptions {
   /** Label for the structure tab. Defaults to `'Accessibility'`. */
@@ -102,6 +102,11 @@ const SEVERITY_LABEL: Record<ComplianceSeverity, string> = {
   error: 'Error',
   warning: 'Warning',
   info: 'Info',
+};
+const SEVERITY_ICON: Record<ComplianceSeverity, IconName> = {
+  error: 'circle-x',
+  warning: 'triangle-alert',
+  info: 'info',
 };
 
 /** The `standard` value core stamps on contrast findings. */
@@ -489,29 +494,32 @@ export function complianceView(options: ComplianceViewOptions = {}): PreviewerPl
       twisty.setAttribute('aria-hidden', 'true');
       row.append(twisty);
 
-      // Severity dot (or a neutral tagged/artifact indicator).
-      const dot = el('span', 'bpp-cv-dot');
-      if (sev) {
-        dot.classList.add(`bpp-cv-dot-${sev}`);
-        dot.title = `${SEVERITY_LABEL[sev]}: ${findingsByNode.get(node.id)!.length} finding(s)`;
-      } else if (node.a11y?.artifact) {
-        dot.classList.add('bpp-cv-dot-artifact');
-        dot.title = 'Artifact (not in reading order)';
-      } else if (node.a11y?.tagged) {
-        dot.classList.add('bpp-cv-dot-ok');
-        dot.title = 'Tagged content';
-      } else {
-        dot.classList.add('bpp-cv-dot-none');
-      }
-      row.append(dot);
-
-      // Role chip.
-      if (node.a11y?.role) {
-        const chip = el('span', `bpp-cv-role bpp-cv-role-${chipKind(node.a11y.role)}`, node.a11y.role);
+      const a11y = node.a11y;
+      const role = a11y?.artifact ? 'Artifact' : a11y?.role || (a11y?.tagged ? 'Tagged' : '');
+      if (role) {
+        const chip = el('span', 'bpp-cv-role', role);
+        if (role === 'Artifact') {
+          chip.classList.add('bpp-cv-role-artifact');
+          chip.title = 'Artifact (outside the reading order)';
+        } else if (a11y?.tagged) {
+          chip.classList.add('bpp-cv-role-tagged');
+          chip.title = 'Tagged content';
+          row.setAttribute('aria-description', 'Tagged content');
+        }
         row.append(chip);
       }
 
       row.append(el('span', 'bpp-tree-type', node.type));
+      if (sev) {
+        const count = findingsByNode.get(node.id)!.length;
+        const label = `${SEVERITY_LABEL[sev]}: ${count} ${count === 1 ? 'finding' : 'findings'}`;
+        const issue = el('span', `bpp-cv-issue-icon bpp-cv-issue-icon-${sev}`);
+        issue.setAttribute('role', 'img');
+        issue.setAttribute('aria-label', label);
+        issue.title = label;
+        issue.innerHTML = icon(SEVERITY_ICON[sev]);
+        row.append(issue);
+      }
       if (node.name) row.append(el('span', 'bpp-tree-name', node.name));
 
       row.addEventListener('click', event => {

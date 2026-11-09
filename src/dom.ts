@@ -1,6 +1,6 @@
 import { icon } from './icons';
 import { STYLES } from './styles';
-import type { FooterConfig, PreviewerOptions, ToolbarConfig } from './types';
+import type { PreviewerOptions, ToolbarConfig } from './types';
 
 /**
  * Rewrites every `id` (and matching `url(#…)` / `href="#…"` reference) in an SVG

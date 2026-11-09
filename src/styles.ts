@@ -87,15 +87,6 @@ export const STYLES = /* css */ `
   z-index: 2147483647;
 }
 
-.bpp-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--_text-3);
-  font-size: 0.875rem;
-}
-
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
 .bpp-toolbar {
   display: flex;
@@ -257,16 +248,6 @@ export const STYLES = /* css */ `
 
 /* ── Plugin overlays (inspector highlights) ───────────────────────────────── */
 .bpp-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.bpp-hl {
-  position: absolute; box-sizing: border-box;
-  background: color-mix(in srgb, var(--_brand) 18%, transparent);
-  border: 1px solid var(--_brand);
-  border-radius: 1px;
-}
-.bpp-hl-hover {
-  background: color-mix(in srgb, var(--_brand) 8%, transparent);
-  border-style: dashed;
-}
 
 /* ── Shared inspector side panel (tabbed: structure / compliance / …) ──────── */
 .bpp-side {
@@ -530,14 +511,12 @@ export const STYLES = /* css */ `
 .bpp-cv-tree { padding: 4px 0; }
 .bpp-cv-row { align-items: center; }
 
-/* Severity dot. */
-.bpp-cv-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--_text-3); }
-.bpp-cv-dot-error { background: var(--_sev-error); }
-.bpp-cv-dot-warning { background: var(--_sev-warning); }
-.bpp-cv-dot-info { background: var(--_sev-info); }
-.bpp-cv-dot-ok { background: var(--_sev-ok); }
-.bpp-cv-dot-artifact { background: transparent; border: 1px dashed var(--_text-3); }
-.bpp-cv-dot-none { background: var(--_divider); }
+/* Finding icons. */
+.bpp-cv-issue-icon { display: inline-flex; flex: 0 0 auto; }
+.bpp-cv-issue-icon .bpp-icon { width: 14px; height: 14px; }
+.bpp-cv-issue-icon-error { color: var(--_sev-error); }
+.bpp-cv-issue-icon-warning { color: var(--_sev-warning); }
+.bpp-cv-issue-icon-info { color: var(--_sev-info); }
 
 /* Role chips. */
 .bpp-cv-role {
@@ -549,6 +528,17 @@ export const STYLES = /* css */ `
 .bpp-cv-role-figure { background: color-mix(in srgb, var(--_sev-info) 14%, transparent); color: var(--_sev-info); border-color: transparent; }
 .bpp-cv-role-table { background: color-mix(in srgb, var(--_sev-ok) 16%, transparent); color: var(--_sev-ok); border-color: transparent; }
 .bpp-cv-role-artifact { background: transparent; color: var(--_text-3); border-style: dashed; }
+.bpp-cv-row .bpp-cv-role { background: transparent; color: var(--_text-2); border-color: var(--_text-3); }
+.bpp-cv-row .bpp-cv-role-tagged {
+  background: color-mix(in srgb, var(--_sev-ok) 14%, transparent);
+  color: var(--_text-1); border-color: transparent;
+}
+@media (forced-colors: active) {
+  .bpp-cv-row .bpp-cv-role-tagged {
+    forced-color-adjust: none;
+    background: CanvasText; color: Canvas;
+  }
+}
 
 /* Detail pane. */
 .bpp-cv-detail { border-top: 1px solid var(--_divider); max-height: 42%; overflow: auto; flex: 0 0 auto; }

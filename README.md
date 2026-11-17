@@ -161,4 +161,4 @@ Colors resolve `--bpdf-*` custom properties, then the CongruentUI `--cui-*` toke
 
 ## License
 
-`@bonniepdf/previewer` is licensed under the [Apache-2.0 License](./LICENSE).
+`@bonniepdf/previewer` is licensed under the [Apache-2.0 License](https://github.com/bonniepdf/BonniePDF-Previewer/blob/master/LICENSE).

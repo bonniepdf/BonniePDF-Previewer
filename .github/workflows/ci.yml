@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Previewer
+          persist-credentials: false
+      - uses: ./BonniePDF-Previewer/.github/actions/setup-workspace
+      - name: Typecheck
+        run: pnpm --filter @bonniepdf/previewer run typecheck
+      - name: Test
+        run: pnpm --filter @bonniepdf/previewer run test
+      - name: Build
+        run: pnpm --filter @bonniepdf/previewer run build
+      - name: Verify package types for Node16 consumers
+        run: pnpm --filter @bonniepdf/previewer run check:consumer-types
+      - name: Pack
+        run: pnpm --filter @bonniepdf/previewer pack --pack-destination "$GITHUB_WORKSPACE/packages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonniepdf-previewer-npm
+          path: packages/*.tgz
+          retention-days: 14

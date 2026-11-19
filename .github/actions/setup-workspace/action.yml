@@ -1,0 +1,42 @@
+name: Set up the Previewer workspace
+description: >-
+  Checks out @bonniepdf/core beside this repository and installs both as one
+  pnpm workspace, so the `workspace:*` development dependency on core resolves.
+  The previewer imports nothing from core at run time, so core is not built.
+  Expects this repository to be checked out at ./BonniePDF-Previewer.
+inputs:
+  core-ref:
+    description: Branch, tag or commit of BonniePDF-TypeScript to check out
+    required: false
+    default: master
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: bonniepdf/BonniePDF-TypeScript
+        ref: ${{ inputs.core-ref }}
+        path: BonniePDF-TypeScript
+        persist-credentials: false
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 11.22.0
+        run_install: false
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        registry-url: https://registry.npmjs.org
+    - name: Install the workspace
+      shell: bash
+      run: |
+        cat > pnpm-workspace.yaml <<'YAML'
+        packages:
+          - 'BonniePDF-TypeScript/core'
+          - 'BonniePDF-Previewer'
+        # pnpm 11 fails an install whose dependencies' build scripts are not
+        # approved. tsup and vitest need esbuild's.
+        allowBuilds:
+          esbuild: true
+        YAML
+        printf '{"name":"previewer-ci","private":true}\n' > package.json
+        pnpm install --no-frozen-lockfile

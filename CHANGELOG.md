@@ -7,6 +7,11 @@ release is published by pushing a `v<version>` tag (see
 
 ## Unreleased
 
+## 2026.11.21
+
+Status: Released
+Date: 2026-11-21
+
 First public release.
 
 - `<bonnie-pdf-previewer>` web component and `createPreviewer()` factory: a paginated, zoomable viewer for BonniePDF's SVG pages, with thumbnails, page navigation, fullscreen and a lazy Download PDF button, isolated from host-page CSS in a Shadow DOM.

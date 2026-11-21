@@ -51,10 +51,11 @@ jobs:
             exit 1
           fi
 
-      - name: Typecheck and test
+      - name: Typecheck, test, and build
         run: |
           pnpm --filter @bonniepdf/previewer run typecheck
           pnpm --filter @bonniepdf/previewer run test
+          pnpm --filter @bonniepdf/previewer run build
 
       # Asks npm, before publishing, whether this run matches the package's
       # trusted publisher. A mismatch otherwise surfaces only as E404 on
@@ -83,8 +84,8 @@ jobs:
           exit 1
 
       # Publishes with npm OIDC trusted publishing: no long-lived NPM_TOKEN,
-      # and provenance is attested from this workflow's identity. prepack
-      # builds the package and prepublishOnly checks its consumer types.
+      # and provenance is attested from this workflow's identity.
+      # prepublishOnly checks the declarations emitted by the build above.
       # npm attests provenance only for a public source repository.
       - name: Publish to npm
         run: pnpm publish --filter @bonniepdf/previewer --access public --no-git-checks

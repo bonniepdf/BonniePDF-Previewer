@@ -13,4 +13,5 @@ First public release.
 - `load()` accepts a `@bonniepdf/core` `Document`, an SVG document export (including JSON from a .NET server or a web worker), or a promise of either.
 - `complianceView()` accessibility inspector: the tagged structure tree, PDF/UA-1 findings, optional WCAG contrast checks, and two-way selection between the tree and the page.
 - Theming through `--bpdf-*` and CongruentUI `--cui-*` custom properties, an optional footer with conformance pills, and `preference-key` to remember panel and zoom choices.
+- Show PDF/A-4, PDF/A-4f and PDF/UA-2 in the footer when the document's metadata declares them.
 - ESM and CommonJS entry points, with type declarations that resolve under Node16 and NodeNext.

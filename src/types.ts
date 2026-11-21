@@ -264,7 +264,7 @@ export interface FooterConfig {
   text?: string;
   /**
    * Render conformance pills derived from the loaded document's
-   * `snapshot.meta`: its PDF/A conformance level and PDF/UA-1 tagging. Defaults
+   * `snapshot.meta`: its PDF/A conformance level and PDF/UA level. Defaults
    * to `true`. Documents loaded without a snapshot simply show no pills.
    */
   conformance?: boolean;

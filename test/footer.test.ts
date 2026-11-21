@@ -42,6 +42,20 @@ describe('footer', () => {
     div.remove();
   });
 
+  it.each([
+    ['PdfA4', 2, ['PDF/A-4', 'PDF/UA-2']],
+    ['PdfA4f', 2, ['PDF/A-4f', 'PDF/UA-2']],
+    ['PdfA4f', 0, ['PDF/A-4f']],
+    ['None', 2, ['PDF/UA-2']],
+  ] as const)('labels %s with accessibility mode %i for PDF 2.0 documents', (conformance, accessibilityMode, expected) => {
+    const div = document.createElement('div');
+    document.body.append(div);
+    const handle = createPreviewer(div, { footer: {} });
+    handle.load(pages(1), { snapshot: snapshotWithMeta({ accessibilityMode, conformance }) });
+    expect([...div.querySelectorAll('.bpp-footer-tag')].map(el => el.textContent)).toEqual(expected);
+    div.remove();
+  });
+
   it('honours a custom text and disables pills with conformance: false', () => {
     const div = document.createElement('div');
     document.body.append(div);

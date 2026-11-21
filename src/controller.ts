@@ -487,17 +487,20 @@ export function createPreviewer(
   }
 
   /** Renders the footer's conformance pills from the loaded document's snapshot
-   *  metadata: the PDF/A level (e.g. `"PdfA2b"` → `PDF/A-2b`) and PDF/UA-1 when
-   *  the document is tagged. No snapshot, no meta, or `conformance: false` → no
-   *  pills; the footer's text side is unaffected. */
+   *  metadata: the PDF/A level (e.g. `"PdfA2b"` → `PDF/A-2b`, `"PdfA4"` →
+   *  `PDF/A-4`, `"PdfA4f"` → `PDF/A-4f`) and the PDF/UA level when the document
+   *  is tagged (`1` → `PDF/UA-1`, `2` → `PDF/UA-2`). No snapshot, no meta, or
+   *  `conformance: false` → no pills; the footer's text side is unaffected. */
   function updateFooterTags(meta: SnapshotMeta | undefined): void {
     const host = q<HTMLElement>('[data-footer-tags]');
     if (!host) return;
     const tags: string[] = [];
     if (opts.footer?.conformance) {
-      const pdfa = meta ? /^PdfA(\d)([a-e])$/i.exec(meta.conformance.trim()) : null;
-      if (pdfa) tags.push(`PDF/A-${pdfa[1]}${pdfa[2]}`);
-      if (meta?.accessibilityMode === 1) tags.push('PDF/UA-1');
+      // PDF/A-1 to -3 carry a level letter; PDF/A-4 has none, or f / e.
+      const pdfa = meta ? /^PdfA(\d)([a-z]?)$/i.exec(meta.conformance.trim()) : null;
+      if (pdfa) tags.push(`PDF/A-${pdfa[1]}${pdfa[2].toLowerCase()}`);
+      const ua = meta?.accessibilityMode;
+      if (ua === 1 || ua === 2) tags.push(`PDF/UA-${ua}`);
     }
     host.replaceChildren(
       ...tags.map(label => {

@@ -51,13 +51,28 @@
   },
   "keywords": [
     "pdf",
+    "pdf-viewer",
+    "pdf-preview",
     "preview",
     "viewer",
     "svg",
     "web-component",
     "custom-element",
+    "pdf-ua",
+    "accessibility",
+    "wcag",
+    "typescript",
+    "javascript",
     "bonniepdf"
   ],
+  "homepage": "https://www.bonniepdf.dev/features/typescript/previewer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bonniepdf/BonniePDF-Previewer"
+  },
+  "bugs": {
+    "url": "https://github.com/bonniepdf/BonniePDF-Previewer/issues"
+  },
   "peerDependencies": {
     "@bonniepdf/core": ">=2026.7.2"
   },

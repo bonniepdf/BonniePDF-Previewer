@@ -7,6 +7,13 @@ release is published by pushing a `v<version>` tag (see
 
 ## Unreleased
 
+## 2026.11.23
+
+Status: Released
+Date: 2026-11-23
+
+No changes; released at BonniePDF 2026.11.23.
+
 ## 2026.11.21
 
 Status: Released

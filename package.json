@@ -1,6 +1,6 @@
 {
   "name": "@bonniepdf/previewer",
-  "version": "2026.11.21",
+  "version": "2026.11.23",
   "description": "Framework-agnostic PDF preview component for BonniePDF — renders the SVG pages from @bonniepdf/core as a paginated, zoomable viewer with thumbnails. Ships as a Shadow-DOM web component, fully isolated from host-page CSS.",
   "type": "module",
   "license": "Apache-2.0",
